@@ -1,14 +1,11 @@
-Package: template
-Title: Package Title (one line, title case)
+Package: skyline
+Title: Analysis Of Automated Chamber Measurements Of GHG Fluxes
 Version: 0.0.0.9000
 Authors@R: person("Peter", "Levy", 
                   email = "plevy@ceh.ac.uk", 
                   role = c("aut", "cre", "cph"),
                   comment=c(ORCID = "https://orcid.org/0000-0002-8505-1901"))
-Description: This package is a template for my research projects using the R
-             package structure (research compendium).  This package also includes
-             a helpful template function to deploy the template as a new repository
-             with a different name.  
+Description: This package contains code for the analysis of automated chamber measurements of GHG fluxes.  
 Depends: R (>= 3.1.2)
 License: MIT + file LICENSE
 LazyData: true

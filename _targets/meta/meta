@@ -1,0 +1,20 @@
+name|type|data|command|depend|seed|path|time|size|bytes|format|repository|iteration|parent|children|seconds|warnings|error
+data|stem|83344c766543d6cb|43fae4011a0626f4|136bf5e07fbd9b1c|1588979285||t19622.5018899561s|6b7c32982bdf1591|1748|rds|local|vector|||0.01|package tibble was built under R version 4.1.3|
+dt_chi|stem|07fd9e17b7fd4b48|9429c0fee2090d21|d7d172d0322b62a5|-1077027297||t19622.6868809984s|2247d5d0282ddd84|1627162|qs|local|vector|||22.65||
+dt_flux|stem|6dd71d12008128c1|ce728c7b57eeb3ef|39affcc9d1566107|-918198347||t19622.6946793363s|9899f9fbdcfa916f|38|qs|local|vector|||0||
+end_date|object|e463c8f98d438ea0|||||||||||||||
+expt_id|object|52d71bd74b43142d|||||||||||||||
+fname_meta|stem|aa4e3582a082a219|a8d4a1297baa9143|ef46db3751d8e999|1917417177|data-raw/DIVINE_meta-data_AgZero.xlsx|t19622.5775674991s|2428dac963967554|49873|file|local|vector|||0.3|package data.table was built under R version 4.1.2. package readxl was built under R version 4.1.3. package units was built under R version 4.1.3. package qs was built under R version 4.1.2|
+get_ch_position_data|function|9e13b3df29708502|||||||||||||||
+get_data|function|f4c5c6d71b2fa82a|||||||||||||||
+get_ghg_data|function|48fa84757b88997c|||||||||||||||
+l_meta|stem|c0e3fc003d494850|f8ad1aa1ce095729|91216c26d23b48c9|-1991831992||t19622.5782553524s|8804311f8af67a6e|4015|qs|local|vector|||2.13||
+model|stem|d98909820f15fa94|ae83bc723fe2997c|b9bdaa5fb89312a7|1816327236||t19622.5018910182s|060eaebff2eb84c0|108|rds|local|vector|||0||
+p_pos|stem|35f4fc61d1a5c4a3|9429c0fee2090d21|45dca6fb1ca7f44b|-471214809||t19622.6946779616s|8691a925ec5773e5|2917669|qs|local|vector|||20.16||
+process_data|function|235460aa18812e0b|||||||||||||||
+read_cs_data|function|5a72e54235056c55|||||||||||||||
+read_metadata|function|9daf7210d19dc944|||||||||||||||
+site_id|object|5f76cfd4acdca3eb|||||||||||||||
+start_date|object|e463c8f98d438ea0|||||||||||||||
+v_dates|object|718b1f13a42e2714|||||||||||||||
+v_pkgs|object|d1ca0532db89caad|||||||||||||||
