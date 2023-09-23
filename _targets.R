@@ -12,6 +12,7 @@ tar_option_set(
 tar_source()
 
 # site, experiment, and dates to process:
+data_location <- "local drive"
 site_id <- "EH"
 expt_id <- "digestate1"
 start_date <- "2023-04-04"
@@ -26,11 +27,27 @@ list(
     command = read_metadata(fname_meta)
   ),
   tar_target(
-    name = p_pos,
-    command = get_data(v_dates[1], site_id, expt_id, l_meta)
+    name = dt_ghg,
+    command = get_data(v_dates[1], site_id, expt_id, data_location, l_meta)
+  ),
+  tar_target(
+    name = dt_unfilt,
+    command = remove_deadband(dt_ghg, method = "time fit", dryrun = TRUE)
+  ),
+  tar_target(
+    name = p_unfilt,
+    command = plot_data_unfiltered(dt_unfilt)
+  ),
+  tar_target(
+    name = dt,
+    command = remove_deadband(dt_ghg, method = "time fit")
+  ),
+  tar_target(
+    name = p_ghg,
+    command = plot_data(dt)
   ),
   tar_target(
     name = dt_flux,
-    command = process_data(v_dates, p_pos)
+    command = process_data(v_dates, dt_ghg)
   )
 )

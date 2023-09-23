@@ -3,10 +3,12 @@ library(targets)
 source("_targets.R")
 tar_outdated()
 system.time(tar_make())
+tar_load_everything()
+p_unfilt
+p_ghg
 
 # for debugging
 lapply(v_pkgs, require, character.only = TRUE)
-tar_load_everything()
 
 l_meta$dt_site
 l_meta$dt_expt
