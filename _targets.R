@@ -17,7 +17,7 @@ site_id <- "EH"
 expt_id <- "digestate1"
 start_date <- "2023-03-28"
 end_date   <- "2023-08-31"
-example_date   <- "2023-04-04"
+example_date   <- as.POSIXct("2023-04-03")
 v_dates <- as.POSIXct(seq(from = as.Date(start_date), to = as.Date(end_date), by="day"))
 save_plots <- FALSE
 
@@ -29,14 +29,18 @@ list(
     command = read_metadata(fname_meta)
   ),
   tar_target(
-    name = dt_chi,
+    name = l_out,
     command = get_data(v_dates, site_id, expt_id, data_location, l_meta, 
       save_plots = save_plots)
   ),
   tar_target(
+    name = l_out_example,
+    command = get_data(example_date, site_id, expt_id, data_location, l_meta, 
+      filter_deadband = FALSE, save_plots = save_plots)
+  ),
+  tar_target(
     name = dt_unfilt,
-    command = remove_deadband(dt_chi[
-      example_date == as.POSIXct(lubridate::date(datect))], 
+    command = remove_deadband(l_out_example$dt_chi, 
       method = "time fit", dryrun = TRUE)
   ),
   tar_target(
@@ -44,68 +48,64 @@ list(
     command = plot_data_unfiltered(dt_unfilt)
   ),
   tar_target(
-    name = dt_filt,
-    command = remove_deadband(dt_chi, method = "time fit")
-  ),
-  tar_target(
     name = p_chi_co2,
-    command = plot_chi(dt_filt[
+    command = plot_chi(l_out$dt_chi[
       example_date == as.POSIXct(lubridate::date(datect))], 
       gas_name = "CO2_dry")
   ),
   tar_target(
     name = p_chi_ch4,
-    command = plot_chi(dt_filt[
+    command = plot_chi(l_out$dt_chi[
       example_date == as.POSIXct(lubridate::date(datect))], 
       gas_name = "CH4_dry")
   ),
   tar_target(
     name = p_chi_n2o,
-    command = plot_chi(dt_filt[
+    command = plot_chi(l_out$dt_chi[
       example_date == as.POSIXct(lubridate::date(datect))], 
       gas_name = "N2O_dry")
   ),
-  tar_target(
-    name = dt_flux1,
-    command = calc_flux(dt_filt, gas_name = "H2O")
-  ),
-  tar_target(
-    name = dt_flux2,
-    command = calc_flux(dt_filt, gas_name = "CO2_dry")
-  ),
-  tar_target(
-    name = dt_flux3,
-    command = calc_flux(dt_filt, gas_name = "CH4_dry")
-  ),
-  tar_target(
-    name = dt_flux4,
-    command = calc_flux(dt_filt, gas_name = "N2O_dry")
-  ),
-  tar_target(
-    name = dt_fluxa,
-    command = join_fluxes(dt_flux1, dt_flux2)
-  ),
-  tar_target(
-    name = dt_fluxb,
-    command = join_fluxes(dt_fluxa, dt_flux3)
-  ),
-  tar_target(
-    name = dt_flux,
-    command = join_fluxes(dt_fluxb, dt_flux4)
-  ),
+  # tar_target(
+    # name = dt_flux1,
+    # command = calc_flux(dt_filt, gas_name = "H2O")
+  # ),
+  # tar_target(
+    # name = dt_flux2,
+    # command = calc_flux(dt_filt, gas_name = "CO2_dry")
+  # ),
+  # tar_target(
+    # name = dt_flux3,
+    # command = calc_flux(dt_filt, gas_name = "CH4_dry")
+  # ),
+  # tar_target(
+    # name = dt_flux4,
+    # command = calc_flux(dt_filt, gas_name = "N2O_dry")
+  # ),
+  # tar_target(
+    # name = dt_fluxa,
+    # command = join_fluxes(dt_flux1, dt_flux2)
+  # ),
+  # tar_target(
+    # name = dt_fluxb,
+    # command = join_fluxes(dt_fluxa, dt_flux3)
+  # ),
+  # tar_target(
+    # name = dt_flux,
+    # command = join_fluxes(dt_fluxb, dt_flux4)
+  # ),
   tar_target(
     name = p_flux_co2,
-    command = plot_flux(dt_flux, flux_name = "f_CO2_dry", 
+    command = plot_flux(l_out$dt_flux, flux_name = "f_CO2_dry", 
       sigma_name = "sigma_CO2_dry", site_id, expt_id)
   ),
   tar_target(
     name = p_flux_ch4,
-    command = plot_flux(dt_flux, flux_name = "f_CH4_dry", 
+    command = plot_flux(l_out$dt_flux, flux_name = "f_CH4_dry", 
       sigma_name = "sigma_CH4_dry", site_id, expt_id)
   ),
   tar_target(
     name = p_flux_n2o,
-    command = plot_flux(dt_flux, flux_name = "f_N2O_dry", 
+    command = plot_flux(l_out$dt_flux, flux_name = "f_N2O_dry", 
       sigma_name = "sigma_N2O_dry", site_id, expt_id)
   )
 )

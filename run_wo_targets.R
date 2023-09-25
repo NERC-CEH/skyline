@@ -17,8 +17,10 @@ site_id <- "EH"
 expt_id <- "digestate1"
 start_date <- "2023-03-28"
 end_date   <- "2023-08-31"
+example_date   <- "2023-04-04"
 v_dates <- as.POSIXct(seq(from = as.Date(start_date), to = as.Date(end_date), by="day"))
-this_date <- v_dates[1]
+save_plots <- FALSE
+this_date <- example_date
 
 fname_meta <- "data-raw/skyline_meta-data.xlsx"
 l_meta <- read_metadata(fname_meta)

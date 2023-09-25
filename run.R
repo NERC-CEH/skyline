@@ -3,7 +3,7 @@ library(targets)
 source("_targets.R")
 tar_outdated()
 system.time(tar_make())
-tar_load_everything()
+tar_load_everything(strict = FALSE)
 p_unfilt
 p_chi_co2
 p_chi_ch4

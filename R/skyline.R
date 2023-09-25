@@ -122,7 +122,8 @@ get_soilmet_data <- function(v_fnames) {
 }
 
 get_data <- function(v_dates, this_site_id = "EH", 
-  this_expt_id = "digestate1", data_location, l_meta, save_plots = TRUE) {
+  this_expt_id = "digestate1", data_location, l_meta, 
+  filter_deadband = TRUE, save_plots = TRUE, write_all_chi = FALSE) {
   # create directories for output
   pname_csv <- here("output", this_site_id, this_expt_id, "csv")
   pname_png <- here("output", this_site_id, this_expt_id, "png")
@@ -131,7 +132,8 @@ get_data <- function(v_dates, this_site_id = "EH",
   
   
   n_days <- length(v_dates)
-  l_dt <- list()
+  l_dt_chi  <- list()
+  l_dt_flux <- list()
   for (i in seq_along(v_dates)) {
     this_date <- v_dates[i]
     l_files <- check_data_available(this_date, this_site_id, this_expt_id, data_location, l_meta)
@@ -164,31 +166,51 @@ get_data <- function(v_dates, this_site_id = "EH",
     dt <- dt[!is.na(datect)]
     # skip if chpos data is invalid - stuck on single value all day
     if (length(unique(dt$chamber_id)) < 2) next
+    # remove deadband and plot
+    if (filter_deadband) dt <- remove_deadband(dt, method = "time fit")
     
     # save to file and list
     fname <- paste0(pname_csv, "/dt_chi_", round(this_date, "day"), ".csv")
     fwrite(dt, file = fname)
-    l_dt[[i]] <- dt
+    l_dt_chi[[i]] <- dt
     
     if (save_plots) {
-      # remove deadband and plot
-      dt_filt <- remove_deadband(dt, method = "time fit")
-      p <- plot_chi(dt_filt, gas_name = "H2O")    
+      p <- plot_chi(dt, gas_name = "H2O")    
       fname <- paste0(pname_png, "/h2o_", round(this_date, "day"), ".png")
       ggsave(p, file = fname)
-      p <- plot_chi(dt_filt, gas_name = "CO2_dry")    
+      p <- plot_chi(dt, gas_name = "CO2_dry")    
       fname <- paste0(pname_png, "/co2_", round(this_date, "day"), ".png")
       ggsave(p, file = fname)
-      p <- plot_chi(dt_filt, gas_name = "CH4_dry")    
+      p <- plot_chi(dt, gas_name = "CH4_dry")    
       fname <- paste0(pname_png, "/ch4_", round(this_date, "day"), ".png")
       ggsave(p, file = fname)
-      p <- plot_chi(dt_filt, gas_name = "N2O_dry")    
+      p <- plot_chi(dt, gas_name = "N2O_dry")    
       fname <- paste0(pname_png, "/n2o_", round(this_date, "day"), ".png")
       ggsave(p, file = fname)
     }
+    # calculate fluxes each day
+    dt_flux1 <- calc_flux(dt, gas_name = "H2O")
+    dt_flux2 <- calc_flux(dt, gas_name = "CO2_dry")
+    dt_flux3 <- calc_flux(dt, gas_name = "CH4_dry")
+    dt_flux4 <- calc_flux(dt, gas_name = "N2O_dry")
+    dt_fluxa <- join_fluxes(dt_flux1, dt_flux2)
+    dt_fluxb <- join_fluxes(dt_fluxa, dt_flux3)
+    dt_flux  <- join_fluxes(dt_fluxb, dt_flux4)
+    # save to file and list
+    fname <- paste0(pname_csv, "/dt_flux_", round(this_date, "day"), ".csv")
+    fwrite(dt_flux, file = fname)
+    l_dt_flux[[i]] <- dt_flux
   }
-  dt <- rbindlist(l_dt)
-  return(dt)
+  dt_chi  <- rbindlist(l_dt_chi)
+  dt_flux <- rbindlist(l_dt_flux)
+  # save to files
+  fname <- paste0(pname_csv, "/dt_chi_", round(v_dates[1], "day"), "_", 
+    round(v_dates[n_days], "day"), ".csv")
+  if (write_all_chi) fwrite(dt_chi, file = fname)
+  fname <- paste0(pname_csv, "/dt_flux_", round(v_dates[1], "day"), "_", 
+    round(v_dates[n_days], "day"), ".csv")
+  fwrite(dt_flux, file = fname)
+  return(list(dt_chi = dt_chi, dt_flux = dt_flux))
 }
 
 # dt <- remove_deadband(dt, method = "time fit")
@@ -264,6 +286,26 @@ plot_chi <- function(dt, gas_name = "N2O_dry", initial_deadband_width = 150, fin
 }
 
 calc_flux <- function(dt, gas_name = "CO2_dry", use_STP = TRUE, PA = 1000, TA = 15) {
+  form <- formula(paste(gas_name, "~ t"))
+  flux_var_name <- paste0("f_", gas_name)
+  sigma_var_name <- paste0("sigma_", gas_name)
+  dt[, dchi_dt := coef(lm(form, data = .SD))[2], by = mmnt_id]
+  dt[, sigma_dchi_dt := summary(lm(form, data = .SD))$coefficients[2, 2], by = mmnt_id]
+  if (use_STP) {
+    rho <- PA * 100 / (8.31447 * (TA + 273.15))
+  } else {
+    # calculate mean air density for each mmnt if we have the specific data
+    dt[, rho := PA * 100 / (8.31447 * (TA + 273.15))]
+  }
+  dt[, (flux_var_name) := dchi_dt        * rho * volume_m3 / area_m2]
+  dt[, (sigma_var_name) := sigma_dchi_dt * rho * volume_m3 / area_m2]
+  
+  # subset to just the first record 
+  dt <- dt[, .SD[1], by = mmnt_id]
+  return(dt)
+}
+
+calc_flux_daily <- function(dt, gas_name = "CO2_dry", use_STP = TRUE, PA = 1000, TA = 15) {
   form <- formula(paste(gas_name, "~ t"))
   flux_var_name <- paste0("f_", gas_name)
   sigma_var_name <- paste0("sigma_", gas_name)
