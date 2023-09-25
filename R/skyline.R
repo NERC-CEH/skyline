@@ -234,13 +234,14 @@ remove_deadband <- function(dt, initial_deadband_width = 150, final_deadband_wid
     # predict time based on all GHG concentrations
     # and use this to filter out the nonlinear part
     if (length(unique(dt$mmnt_id)) > 1) {
-      m <- lm(t ~ CO2_dry + CH4_dry + N2O_dry + H2O + mmnt_id, w = w, data = dt)
-    } else { # above fails with only one mmnt_id
-      m <- lm(t ~ CO2_dry + CH4_dry + N2O_dry + H2O, w = w, data = dt)
+      form <- formula(t ~ CO2_dry + CH4_dry + N2O_dry + H2O)
+      # very slow on JASMIN: system.time(m <- lm(t ~ CO2_dry + CH4_dry + N2O_dry + H2O + mmnt_id, w = w, data = dt))
+      dt[, t_pred := predict(lm(form, w = w, data = .SD)), by = mmnt_id]
+      dt[, t_resid := abs(scale(resid(lm(form, w = w, data = .SD)))), by = mmnt_id]
+    } else { ## WIP would the above fail with only one mmnt_id? just in case:
+      dt[, t_pred := predict(lm(form, w = w, data = .SD))]
+      dt[, t_resid := abs(scale(resid(lm(form, w = w, data = .SD))))]
     }
-    summary(m)
-    dt[, t_pred := predict(m)]
-    dt[, t_resid := abs(scale(resid(m)))]
     dt[t/n > 0.25 & t/n < 0.75, t_resid := 0]
     # set the exclusion criteria
     dt[t < initial_deadband_width | t > start_final_deadband |
