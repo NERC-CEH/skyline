@@ -5,7 +5,12 @@ tar_outdated()
 system.time(tar_make())
 tar_load_everything()
 p_unfilt
-p_ghg
+p_chi_co2
+p_chi_ch4
+p_chi_n2o
+p_flux_co2
+p_flux_ch4
+p_flux_n2o
 
 # for debugging
 lapply(v_pkgs, require, character.only = TRUE)

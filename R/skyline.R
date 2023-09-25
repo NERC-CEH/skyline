@@ -19,7 +19,7 @@ read_cs_data <- function(filename, return_option = "data"){
   }
 }
 
-read_metadata <- function(fname_meta = "data-raw/DIVINE_meta-data_AgZero.xlsx") {
+read_metadata <- function(fname_meta = "data-raw/skyline_meta-data.xlsx") {
   dt_site <- as.data.table(readxl::read_excel(fname_meta, sheet = "site"),      key=c("site_id"))
   dt_expt <- as.data.table(readxl::read_excel(fname_meta, sheet = "experiment"),key=c("site_id", "expt_id"))
   dt_trmt <- as.data.table(readxl::read_excel(fname_meta, sheet = "treatment"))
@@ -42,27 +42,50 @@ read_metadata <- function(fname_meta = "data-raw/DIVINE_meta-data_AgZero.xlsx") 
   )
 }
 
-get_ghg_data <- function(this_date, this_site_id = "EH", 
+check_data_available <- function(this_date, this_site_id = "EH", 
   this_expt_id = "digestate1", this_data_location = "local drive", l_meta) {
   # subset metadata to site, experiment and data_location
   dt <- l_meta$dt_expt[
     this_site_id == site_id & 
     this_expt_id == expt_id & 
     this_data_location == data_location]
-    
-  # find the raw chi files
-  v_fnames <- dir_ls(dt[, path_to_GHG_data])
+  if (nrow(dt) != 1) stop(paste("Duplicate meta-data rows found in", fname_meta))
+  
+  # find the raw ghg files
+  v_fnames <- dir_ls(dt[, path_to_ghg_data])
   v_fnames <- sort(v_fnames)
   
-  v_dates_ghg <- substr(path_file(v_fnames), 12, 26)
-  v_dates_ghg <- strptime(v_dates_ghg, "%Y%m%d-%H%M%S", tz = "GMT")  
-  v_ind <- which(this_date == as.POSIXct(lubridate::date(v_dates_ghg)))
-  if (length(v_ind) < 1) stop(paste("No GHG files on", this_date))
-  # some data for this day may be in the last file from the previous day
-  # so add this to the files read; do not do on first day
-  if (v_ind[1] > 1) v_ind <- c(v_ind[1] - 1, v_ind)
-  v_fnames[v_ind]
-  l_dt <- lapply(v_fnames[v_ind], fread)
+  v_dates <- substr(path_file(v_fnames), dt$time_start_ghg, dt$time_end_ghg)
+  v_dates <- strptime(v_dates, dt$time_format_ghg, tz = "GMT")  
+  v_ind <- which(this_date == as.POSIXct(lubridate::date(v_dates)))
+  # some GHG data for this day may be in the last file from the previous day
+  # so add this to the files read
+  # do not do if this is the first file or if there are no files that day
+  if (!is.na(v_ind[1]) & v_ind[1] > 1) v_ind <- c(v_ind[1] - 1, v_ind)
+  v_fnames_ghg <- v_fnames[v_ind]
+  
+  # find the chamber position files
+  v_fnames <- dir_ls(dt[, path_to_chamber_position_data])
+  v_fnames <- sort(v_fnames)
+  v_dates <- substr(path_file(v_fnames), dt$time_start_pos, dt$time_end_pos)
+  v_dates <- strptime(v_dates, dt$time_format_pos, tz = "GMT")  
+  v_ind <- which(this_date == as.POSIXct(lubridate::date(v_dates)))
+  v_fnames_pos <- v_fnames[v_ind]
+  
+  # find the soil met files
+  v_fnames <- dir_ls(dt[, path_to_soilmet_data])
+  v_fnames <- sort(v_fnames) 
+  v_dates <- substr(path_file(v_fnames), dt$time_start_met, dt$time_end_met)
+  v_dates <- strptime(v_dates, dt$time_format_met, tz = "GMT")  
+  v_ind <- which(this_date == as.POSIXct(lubridate::date(v_dates)))
+  v_fnames_met <- v_fnames[v_ind]
+
+  return(list(v_fnames_ghg = v_fnames_ghg, v_fnames_pos = v_fnames_pos, 
+    v_fnames_met = v_fnames_met))
+}
+
+get_ghg_data <- function(v_fnames, this_date) {
+  l_dt <- lapply(v_fnames, fread)
   dt_ghg <- rbindlist(l_dt)
 
   dt_ghg[, datect := as.POSIXct(EPOCH_TIME, origin = "1970-01-01")]
@@ -75,59 +98,21 @@ get_ghg_data <- function(this_date, this_site_id = "EH",
   return(dt_ghg)
 }
 
-get_ch_position_data <- function(this_date, this_site_id = "EH", 
-  this_expt_id = "digestate1", this_data_location = data_location, l_meta) {
-  # subset metadata to site, experiment and data_location
-  dt <- l_meta$dt_expt[
-    this_site_id == site_id & 
-    this_expt_id == expt_id & 
-    this_data_location == data_location]
-
-  # find the raw chpos files
-  v_fnames <- dir_ls(dt[, path_to_plot_data])
-  v_fnames <- sort(v_fnames)
-  
-  v_dates_ghg <- substr(path_file(v_fnames), 21, 35)
-  v_dates_ghg <- strptime(v_dates_ghg, "%Y_%m_%d_%H%M", tz = "GMT")  
-  v_ind <- which(this_date == as.POSIXct(lubridate::date(v_dates_ghg)))
-  # some data for this day may be in the last file from the previous day
-  # so add this to the files read; do not do on first day
-  #if (v_ind[1] > 1) v_ind <- c(v_ind[1] - 1, v_ind)
-  dt <- read_cs_data(v_fnames[v_ind])
-  l_dt <- lapply(v_fnames[v_ind], read_cs_data)
+get_ch_position_data <- function(v_fnames) {
+  l_dt <- lapply(v_fnames, read_cs_data)
   dt <- rbindlist(l_dt)
   
   dt[, datect := as.POSIXct(round(TIMESTAMP, "secs"))]
-  # aggregate to 1 Hz i.e. do 1-sec averaging
+  # aggregate to 1 Hz - prob not needed as 1 Hz anyway (but is it always?)
   dt <- dt[, lapply(.SD, mean), .SDcols = c("C_Voltage"),  by = datect]
-  # subset to this_date before returning
-  dt <- 
-  # dt[this_date == as.POSIXct(round(datect, "days"))]
+  # convert chamber position voltage to chamber ID
   dt[, chamber_id := as.factor(round(C_Voltage * 0.01, 0))]  
   return(dt)
 }
 
 ## WIP this works, but we want to rehape dt_met to long format, by datect and chamber_id
-get_soilmet_data <- function(this_date = v_dates[1], this_site_id = "EH", 
-  this_expt_id = "digestate1", this_data_location = data_location, l_meta) {
-  # subset metadata to site, experiment and data_location
-  dt <- l_meta$dt_expt[
-    this_site_id == site_id & 
-    this_expt_id == expt_id & 
-    this_data_location == data_location]
-
-  # find the raw chpos files
-  v_fnames <- dir_ls(dt[, path_to_soilmet_data])
-  v_fnames <- sort(v_fnames)
-
-  v_dates_ghg <- substr(path_file(v_fnames), 40, 49)
-  v_dates_ghg <- strptime(v_dates_ghg, "%Y_%m_%d", tz = "GMT")  
-  v_ind <- which(this_date == as.POSIXct(lubridate::date(v_dates_ghg)))
-  # some data for this day may be in the last file from the previous day
-  # so add this to the files read; do not do on first day
-  #if (v_ind[1] > 1) v_ind <- c(v_ind[1] - 1, v_ind)
-  dt <- read_cs_data(v_fnames[v_ind])
-  l_dt <- lapply(v_fnames[v_ind], read_cs_data)
+get_soilmet_data <- function(v_fnames) {
+  l_dt <- lapply(v_fnames, read_cs_data)
   dt <- rbindlist(l_dt)
   
   dt[, datect := as.POSIXct(round(TIMESTAMP, "mins"))]
@@ -137,19 +122,26 @@ get_soilmet_data <- function(this_date = v_dates[1], this_site_id = "EH",
 }
 
 get_data <- function(v_dates, this_site_id = "EH", 
-  this_expt_id = "digestate1", data_location, l_meta) {
+  this_expt_id = "digestate1", data_location, l_meta, save_plots = TRUE) {
+  # create directories for output
+  pname_csv <- here("output", this_site_id, this_expt_id, "csv")
+  pname_png <- here("output", this_site_id, this_expt_id, "png")
+  fs::dir_create(pname_csv)
+  fs::dir_create(pname_png)
+  
   
   n_days <- length(v_dates)
   l_dt <- list()
   for (i in seq_along(v_dates)) {
     this_date <- v_dates[i]
-    dt_ghg <- get_ghg_data(        this_date, this_site_id = "EH", 
-      this_expt_id = "digestate1", this_data_location = data_location, l_meta)
-    dt_pos <- get_ch_position_data(this_date, this_site_id = "EH", 
-      this_expt_id = "digestate1", this_data_location = data_location, l_meta)
+    l_files <- check_data_available(this_date, this_site_id, this_expt_id, data_location, l_meta)
+    # if no data today, move on to next day
+    if (length(l_files$v_fnames_ghg) == 0 | length(l_files$v_fnames_pos) == 0) next
+
+    dt_ghg <- get_ghg_data(l_files$v_fnames_ghg, this_date)
+    dt_pos <- get_ch_position_data(l_files$v_fnames_pos)
     # this works, but we want to rehape dt_met to long format, by datect and chamber_id
-    # dt_met <- get_soilmet_data(this_date, this_site_id = "EH", 
-      # this_expt_id = "digestate1", this_data_location = data_location, l_meta)
+    # dt_met <- get_soilmet_data(l_files$v_fnames_met)
     dt <- dt_ghg[dt_pos, on = .(datect = datect)]
     # dt <-  dt[dt_met, on = .(datect = datect)]
 
@@ -168,27 +160,32 @@ get_data <- function(v_dates, this_site_id = "EH",
     dt_cham <- l_meta$dt_cham[this_site_id == site_id & this_expt_id == expt_id]
     dt_cham <- dt_cham[this_date >= start_date & this_date < end_date ]
     dt <- dt[dt_cham, on = .(chamber_id = chamber_id)]
-    # save to list
+    # remove where ghg data is missing
+    dt <- dt[!is.na(datect)]
+    # skip if chpos data is invalid - stuck on single value all day
+    if (length(unique(dt$chamber_id)) < 2) next
+    
+    # save to file and list
+    fname <- paste0(pname_csv, "/dt_chi_", round(this_date, "day"), ".csv")
+    fwrite(dt, file = fname)
     l_dt[[i]] <- dt
     
-    # remove deadband and plot
-    dt_filt <- remove_deadband(dt, method = "time fit")
-    p <- plot_chi(dt_filt, gas_name = "H2O")    
-    fname <- here("output", site_id, expt_id,
-      paste0("h2o_", round(this_date, "day"), ".png"))
-    ggsave(p, file = fname)
-    p <- plot_chi(dt_filt, gas_name = "CO2_dry")    
-    fname <- here("output", site_id, expt_id,
-      paste0("co2_", round(this_date, "day"), ".png"))
-    ggsave(p, file = fname)
-    p <- plot_chi(dt_filt, gas_name = "CH4_dry")    
-    fname <- here("output", site_id, expt_id,
-      paste0("ch4_", round(this_date, "day"), ".png"))
-    ggsave(p, file = fname)
-    p <- plot_chi(dt_filt, gas_name = "N2O_dry")    
-    fname <- here("output", site_id, expt_id,
-      paste0("n2o_", round(this_date, "day"), ".png"))
-    ggsave(p, file = fname)
+    if (save_plots) {
+      # remove deadband and plot
+      dt_filt <- remove_deadband(dt, method = "time fit")
+      p <- plot_chi(dt_filt, gas_name = "H2O")    
+      fname <- paste0(pname_png, "/h2o_", round(this_date, "day"), ".png")
+      ggsave(p, file = fname)
+      p <- plot_chi(dt_filt, gas_name = "CO2_dry")    
+      fname <- paste0(pname_png, "/co2_", round(this_date, "day"), ".png")
+      ggsave(p, file = fname)
+      p <- plot_chi(dt_filt, gas_name = "CH4_dry")    
+      fname <- paste0(pname_png, "/ch4_", round(this_date, "day"), ".png")
+      ggsave(p, file = fname)
+      p <- plot_chi(dt_filt, gas_name = "N2O_dry")    
+      fname <- paste0(pname_png, "/n2o_", round(this_date, "day"), ".png")
+      ggsave(p, file = fname)
+    }
   }
   dt <- rbindlist(l_dt)
   return(dt)
@@ -248,7 +245,7 @@ plot_chi <- function(dt, gas_name = "N2O_dry", initial_deadband_width = 150, fin
   p <- p + geom_point(alpha = 0.1)
   p <- p + xlim(0, NA) + ylab(gas_name)
   p <- p + stat_smooth(method = "lm")
-  p <- p + facet_wrap(~ chamber_id, scales = "free_y")
+  p <- p + facet_wrap(~ chamber_id)
 
   # p <- ggplot(dt, aes(datect, C_Voltage, colour = mmnt_id)) + geom_point()
   # p <- ggplot(dt, aes(datect, t, colour = mmnt_id)) + geom_point()
@@ -298,7 +295,9 @@ join_fluxes <- function(dt_1, dt_2) {
   return(dt)
 }
 
-plot_flux <- function(dt_flux, flux_name = "f_N2O_dry", sigma_name = "sigma_N2O_dry") {
+plot_flux <- function(dt_flux, flux_name = "f_N2O_dry", 
+  sigma_name = "sigma_N2O_dry", site_id, expt_id) {
+  
   dt_flux[, f     := get(flux_name)]
   dt_flux[, sigma := get(sigma_name)]
   dt_flux[, ci_lo := f - (sigma * 1.96)]
@@ -318,3 +317,99 @@ plot_flux <- function(dt_flux, flux_name = "f_N2O_dry", sigma_name = "sigma_N2O_
   
   return(p)
 }
+
+
+# get_ghg_data <- function(this_date, this_site_id = "EH", 
+  # this_expt_id = "digestate1", this_data_location = "local drive", l_meta) {
+  # # subset metadata to site, experiment and data_location
+  # dt <- l_meta$dt_expt[
+    # this_site_id == site_id & 
+    # this_expt_id == expt_id & 
+    # this_data_location == data_location]
+    
+  # # find the raw chi files
+  # v_fnames <- dir_ls(dt[, path_to_ghg_data])
+  # v_fnames <- sort(v_fnames)
+  
+  # v_dates_ghg <- substr(path_file(v_fnames), 12, 26)
+  # v_dates_ghg <- strptime(v_dates_ghg, "%Y%m%d-%H%M%S", tz = "GMT")  
+  # v_ind <- which(this_date == as.POSIXct(lubridate::date(v_dates_ghg)))
+  # if (length(v_ind) < 1) stop(paste("No GHG files on", this_date))
+  # # some data for this day may be in the last file from the previous day
+  # # so add this to the files read; do not do on first day
+  # if (v_ind[1] > 1) v_ind <- c(v_ind[1] - 1, v_ind)
+  # v_fnames[v_ind]
+  # l_dt <- lapply(v_fnames[v_ind], fread)
+  # dt_ghg <- rbindlist(l_dt)
+
+  # dt_ghg[, datect := as.POSIXct(EPOCH_TIME, origin = "1970-01-01")]
+  # dt_ghg[, datect := as.POSIXct(round(datect, "secs"))]
+  # # aggregate to 1 Hz i.e. do 1-sec averaging
+  # dt_ghg <- dt_ghg[, lapply(.SD, mean), .SDcols = c("CavityPressure", "CavityTemp", 
+    # "N2O_dry", "CO2_dry", "CH4_dry", "H2O"),  by = datect]
+  # # subset to this_date before returning
+  # dt_ghg <- dt_ghg[this_date == as.POSIXct(lubridate::date(datect))]
+  # return(dt_ghg)
+# }
+
+
+# get_ch_position_data <- function(this_date, this_site_id = "EH", 
+  # this_expt_id = "digestate1", this_data_location = data_location, l_meta) {
+  # # subset metadata to site, experiment and data_location
+  # dt <- l_meta$dt_expt[
+    # this_site_id == site_id & 
+    # this_expt_id == expt_id & 
+    # this_data_location == data_location]
+
+  # # find the raw chpos files
+  # v_fnames <- dir_ls(dt[, path_to_chamber_position_data])
+  # v_fnames <- sort(v_fnames)
+  
+  # v_dates_ghg <- substr(path_file(v_fnames), 21, 35)
+  # v_dates_ghg <- strptime(v_dates_ghg, "%Y_%m_%d_%H%M", tz = "GMT")  
+  # v_ind <- which(this_date == as.POSIXct(lubridate::date(v_dates_ghg)))
+  # # some data for this day may be in the last file from the previous day
+  # # so add this to the files read; do not do on first day
+  # #if (v_ind[1] > 1) v_ind <- c(v_ind[1] - 1, v_ind)
+  # dt <- read_cs_data(v_fnames[v_ind])
+  # l_dt <- lapply(v_fnames[v_ind], read_cs_data)
+  # dt <- rbindlist(l_dt)
+  
+  # dt[, datect := as.POSIXct(round(TIMESTAMP, "secs"))]
+  # # aggregate to 1 Hz i.e. do 1-sec averaging
+  # dt <- dt[, lapply(.SD, mean), .SDcols = c("C_Voltage"),  by = datect]
+  # # subset to this_date before returning
+  # dt <- 
+  # # dt[this_date == as.POSIXct(round(datect, "days"))]
+  # dt[, chamber_id := as.factor(round(C_Voltage * 0.01, 0))]  
+  # return(dt)
+# }
+
+# ## WIP this works, but we want to rehape dt_met to long format, by datect and chamber_id
+# get_soilmet_data <- function(this_date = v_dates[1], this_site_id = "EH", 
+  # this_expt_id = "digestate1", this_data_location = data_location, l_meta) {
+  # # subset metadata to site, experiment and data_location
+  # dt <- l_meta$dt_expt[
+    # this_site_id == site_id & 
+    # this_expt_id == expt_id & 
+    # this_data_location == data_location]
+
+  # # find the raw chpos files
+  # v_fnames <- dir_ls(dt[, path_to_soilmet_data])
+  # v_fnames <- sort(v_fnames)
+
+  # v_dates_ghg <- substr(path_file(v_fnames), 40, 49)
+  # v_dates_ghg <- strptime(v_dates_ghg, "%Y_%m_%d", tz = "GMT")  
+  # v_ind <- which(this_date == as.POSIXct(lubridate::date(v_dates_ghg)))
+  # # some data for this day may be in the last file from the previous day
+  # # so add this to the files read; do not do on first day
+  # #if (v_ind[1] > 1) v_ind <- c(v_ind[1] - 1, v_ind)
+  # dt <- read_cs_data(v_fnames[v_ind])
+  # l_dt <- lapply(v_fnames[v_ind], read_cs_data)
+  # dt <- rbindlist(l_dt)
+  
+  # dt[, datect := as.POSIXct(round(TIMESTAMP, "mins"))]
+  # dt[, TIMESTAMP := NULL]
+  # dt[, RECORD := NULL]
+  # return(dt)
+# }

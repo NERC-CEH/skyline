@@ -15,12 +15,17 @@ lapply(v_pkgs, require, character.only = TRUE)
 data_location <- "local drive"
 site_id <- "EH"
 expt_id <- "digestate1"
-start_date <- "2023-08-16"
-end_date   <- start_date
+start_date <- "2023-03-28"
+end_date   <- "2023-08-31"
 v_dates <- as.POSIXct(seq(from = as.Date(start_date), to = as.Date(end_date), by="day"))
+this_date <- v_dates[1]
 
-fname_meta <- "data-raw/DIVINE_meta-data_AgZero.xlsx"
+fname_meta <- "data-raw/skyline_meta-data.xlsx"
 l_meta <- read_metadata(fname_meta)
+
+l_files <- check_data_available(this_date, site_id, expt_id, data_location, l_meta)
+length(l_files$v_fnames_ghg)
+
 dt_ghg <- get_data(v_dates[1], site_id, expt_id, data_location, l_meta)
 dt_unfilt <- remove_deadband(dt_ghg, method = "time fit", dryrun = TRUE)
 dt <- remove_deadband(dt_ghg, method = "time fit")
