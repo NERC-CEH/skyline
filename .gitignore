@@ -3,4 +3,5 @@
 .RData
 inst/doc
 data-raw/raw
+output
 vignettes/*_cache/

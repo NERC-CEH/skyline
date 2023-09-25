@@ -42,7 +42,7 @@ read_metadata <- function(fname_meta = "data-raw/DIVINE_meta-data_AgZero.xlsx") 
   )
 }
 
-get_ghg_data <- function(this_date = v_dates[1], this_site_id = "EH", 
+get_ghg_data <- function(this_date, this_site_id = "EH", 
   this_expt_id = "digestate1", this_data_location = "local drive", l_meta) {
   # subset metadata to site, experiment and data_location
   dt <- l_meta$dt_expt[
@@ -75,7 +75,7 @@ get_ghg_data <- function(this_date = v_dates[1], this_site_id = "EH",
   return(dt_ghg)
 }
 
-get_ch_position_data <- function(this_date = v_dates[1], this_site_id = "EH", 
+get_ch_position_data <- function(this_date, this_site_id = "EH", 
   this_expt_id = "digestate1", this_data_location = data_location, l_meta) {
   # subset metadata to site, experiment and data_location
   dt <- l_meta$dt_expt[
@@ -101,41 +101,100 @@ get_ch_position_data <- function(this_date = v_dates[1], this_site_id = "EH",
   # aggregate to 1 Hz i.e. do 1-sec averaging
   dt <- dt[, lapply(.SD, mean), .SDcols = c("C_Voltage"),  by = datect]
   # subset to this_date before returning
-  dt <- dt[this_date == as.POSIXct(round(datect, "days"))]
+  dt <- 
+  # dt[this_date == as.POSIXct(round(datect, "days"))]
   dt[, chamber_id := as.factor(round(C_Voltage * 0.01, 0))]  
   return(dt)
 }
 
-get_data <- function(this_date = v_dates[1], this_site_id = "EH", 
+## WIP this works, but we want to rehape dt_met to long format, by datect and chamber_id
+get_soilmet_data <- function(this_date = v_dates[1], this_site_id = "EH", 
+  this_expt_id = "digestate1", this_data_location = data_location, l_meta) {
+  # subset metadata to site, experiment and data_location
+  dt <- l_meta$dt_expt[
+    this_site_id == site_id & 
+    this_expt_id == expt_id & 
+    this_data_location == data_location]
+
+  # find the raw chpos files
+  v_fnames <- dir_ls(dt[, path_to_soilmet_data])
+  v_fnames <- sort(v_fnames)
+
+  v_dates_ghg <- substr(path_file(v_fnames), 40, 49)
+  v_dates_ghg <- strptime(v_dates_ghg, "%Y_%m_%d", tz = "GMT")  
+  v_ind <- which(this_date == as.POSIXct(lubridate::date(v_dates_ghg)))
+  # some data for this day may be in the last file from the previous day
+  # so add this to the files read; do not do on first day
+  #if (v_ind[1] > 1) v_ind <- c(v_ind[1] - 1, v_ind)
+  dt <- read_cs_data(v_fnames[v_ind])
+  l_dt <- lapply(v_fnames[v_ind], read_cs_data)
+  dt <- rbindlist(l_dt)
+  
+  dt[, datect := as.POSIXct(round(TIMESTAMP, "mins"))]
+  dt[, TIMESTAMP := NULL]
+  dt[, RECORD := NULL]
+  return(dt)
+}
+
+get_data <- function(v_dates, this_site_id = "EH", 
   this_expt_id = "digestate1", data_location, l_meta) {
   
-  dt_ghg <- get_ghg_data(        this_date = v_dates[1], this_site_id = "EH", 
-    this_expt_id = "digestate1", this_data_location = data_location, l_meta)
-  dt_pos <- get_ch_position_data(this_date = v_dates[1], this_site_id = "EH", 
-    this_expt_id = "digestate1", this_data_location = data_location, l_meta)
-  dt <- dt_ghg[dt_pos, on = .(datect = datect)]
+  n_days <- length(v_dates)
+  l_dt <- list()
+  for (i in seq_along(v_dates)) {
+    this_date <- v_dates[i]
+    dt_ghg <- get_ghg_data(        this_date, this_site_id = "EH", 
+      this_expt_id = "digestate1", this_data_location = data_location, l_meta)
+    dt_pos <- get_ch_position_data(this_date, this_site_id = "EH", 
+      this_expt_id = "digestate1", this_data_location = data_location, l_meta)
+    # this works, but we want to rehape dt_met to long format, by datect and chamber_id
+    # dt_met <- get_soilmet_data(this_date, this_site_id = "EH", 
+      # this_expt_id = "digestate1", this_data_location = data_location, l_meta)
+    dt <- dt_ghg[dt_pos, on = .(datect = datect)]
+    # dt <-  dt[dt_met, on = .(datect = datect)]
 
-  # find unique mmnt_id from sequence of chamber_id
-  dt[, seq_id  := rleid(chamber_id)] # enumerate the sequence
-  # then enumerate the sequence for a given chamber
-  dt[, seq_id := rleid(seq_id), by = chamber_id]
-  dt[, mmnt_id := paste(round(datect, "day"), chamber_id, seq_id, sep = "_")]
+    # find unique mmnt_id from sequence of chamber_id
+    dt[, seq_id  := rleid(chamber_id)] # enumerate the sequence
+    # then enumerate the sequence for a given chamber
+    dt[, seq_id := rleid(seq_id), by = chamber_id]
+    dt[, mmnt_id := paste(round(datect, "day"), chamber_id, seq_id, sep = "_")]
 
-  # enumerate the records within a mmnt sequence
-  dt[, t := 1:.N, by = mmnt_id]
-  dt[, n := .N, by = mmnt_id]
-  dt <- dt[!is.na(H2O)] # subset to valid ghg data only
+    # enumerate the records within a mmnt sequence
+    dt[, t := 1:.N, by = mmnt_id]
+    dt[, n := .N, by = mmnt_id]
+    dt <- dt[!is.na(H2O)] # subset to valid ghg data only
 
-  # join with chamber data  
-  dt_cham <- l_meta$dt_cham[this_site_id == site_id & this_expt_id == expt_id]
-  dt_cham <- dt_cham[this_date >= start_date & this_date < end_date ]
-  dt <- dt[dt_cham, on = .(chamber_id = chamber_id)]
-
+    # join with chamber data  
+    dt_cham <- l_meta$dt_cham[this_site_id == site_id & this_expt_id == expt_id]
+    dt_cham <- dt_cham[this_date >= start_date & this_date < end_date ]
+    dt <- dt[dt_cham, on = .(chamber_id = chamber_id)]
+    # save to list
+    l_dt[[i]] <- dt
+    
+    # remove deadband and plot
+    dt_filt <- remove_deadband(dt, method = "time fit")
+    p <- plot_chi(dt_filt, gas_name = "H2O")    
+    fname <- here("output", site_id, expt_id,
+      paste0("h2o_", round(this_date, "day"), ".png"))
+    ggsave(p, file = fname)
+    p <- plot_chi(dt_filt, gas_name = "CO2_dry")    
+    fname <- here("output", site_id, expt_id,
+      paste0("co2_", round(this_date, "day"), ".png"))
+    ggsave(p, file = fname)
+    p <- plot_chi(dt_filt, gas_name = "CH4_dry")    
+    fname <- here("output", site_id, expt_id,
+      paste0("ch4_", round(this_date, "day"), ".png"))
+    ggsave(p, file = fname)
+    p <- plot_chi(dt_filt, gas_name = "N2O_dry")    
+    fname <- here("output", site_id, expt_id,
+      paste0("n2o_", round(this_date, "day"), ".png"))
+    ggsave(p, file = fname)
+  }
+  dt <- rbindlist(l_dt)
   return(dt)
 }
 
 # dt <- remove_deadband(dt, method = "time fit")
-
 remove_deadband <- function(dt, initial_deadband_width = 150, final_deadband_width = 150,
   method = c("time fit", "specified deadband only"), dryrun = FALSE) {
   dt[, exclude := FALSE]
@@ -184,26 +243,78 @@ p
   return(p)
 }
   
-plot_data <- function(dt, initial_deadband_width = 150, final_deadband_width = 150) {
-  p <- ggplot(dt, aes(datect, C_Voltage, colour = mmnt_id)) + geom_point()
-  p <- ggplot(dt, aes(datect, t, colour = mmnt_id)) + geom_point()
-  p <- ggplot(dt, aes(t, CH4_dry, colour = mmnt_id)) + geom_point()
-  p <- p + facet_wrap(~ mmnt_id)
-  p
+plot_chi <- function(dt, gas_name = "N2O_dry", initial_deadband_width = 150, final_deadband_width = 150) {
+  p <- ggplot(dt, aes(t, get(gas_name), colour = as.factor(seq_id), group = mmnt_id)) 
+  p <- p + geom_point(alpha = 0.1)
+  p <- p + xlim(0, NA) + ylab(gas_name)
+  p <- p + stat_smooth(method = "lm")
+  p <- p + facet_wrap(~ chamber_id, scales = "free_y")
+
+  # p <- ggplot(dt, aes(datect, C_Voltage, colour = mmnt_id)) + geom_point()
+  # p <- ggplot(dt, aes(datect, t, colour = mmnt_id)) + geom_point()
+  # p <- ggplot(dt, aes(t, CH4_dry, colour = mmnt_id)) + geom_point()
+  # p <- p + facet_wrap(~ mmnt_id)
+  # p
   
-  p <- ggplot(dt, aes(t, t_pred, colour = mmnt_id)) + geom_point()
-  p <- ggplot(dt[abs(t_resid) < 1000], aes(t, t_resid, colour = mmnt_id)) + geom_point()
-  # p <- p + geom_abline()
-  p <- p + facet_wrap(~ mmnt_id)
-  p
-  p <- ggplot(dt, aes(t, N2O_dry, colour = as.factor(seq_id))) + geom_point()
-  p <- ggplot(dt, aes(t, CH4_dry, colour = as.factor(seq_id))) + geom_point()
-  p <- ggplot(dt, aes(t, CO2_dry, colour = as.factor(chamber_id))) + geom_point()
-  p <- p + facet_wrap(~ trmt_id) + xlim(0, NA)
-  p
+  # p <- ggplot(dt, aes(t, t_pred, colour = mmnt_id)) + geom_point()
+  # p <- ggplot(dt[abs(t_resid) < 1000], aes(t, t_resid, colour = mmnt_id)) + geom_point()
+  # # p <- p + geom_abline()
+  # p <- p + facet_wrap(~ mmnt_id)
+  # p
+  # p <- ggplot(dt, aes(t, N2O_dry, colour = as.factor(seq_id))) + geom_point()
+  # p <- ggplot(dt, aes(t, CH4_dry, colour = as.factor(seq_id))) + geom_point()
   return(p)
 }
 
+calc_flux <- function(dt, gas_name = "CO2_dry", use_STP = TRUE, PA = 1000, TA = 15) {
+  form <- formula(paste(gas_name, "~ t"))
+  flux_var_name <- paste0("f_", gas_name)
+  sigma_var_name <- paste0("sigma_", gas_name)
+  dt[, dchi_dt := coef(lm(form, data = .SD))[2], by = mmnt_id]
+  dt[, sigma_dchi_dt := summary(lm(form, data = .SD))$coefficients[2, 2], by = mmnt_id]
+  if (use_STP) {
+    rho <- PA * 100 / (8.31447 * (TA + 273.15))
+  } else {
+    # calculate mean air density for each mmnt if we have the specific data
+    dt[, rho := PA * 100 / (8.31447 * (TA + 273.15))]
+  }
+  dt[, (flux_var_name) := dchi_dt        * rho * volume_m3 / area_m2]
+  dt[, (sigma_var_name) := sigma_dchi_dt * rho * volume_m3 / area_m2]
+  
+  # subset to just the first record 
+  dt <- dt[, .SD[1], by = mmnt_id]
+  return(dt)
+}
 
+join_fluxes <- function(dt_1, dt_2) {
+  common_names <- intersect(names(dt_1), names(dt_2))
+  # then, use setdiff to find the column names that are found in 'dt_2' 
+  # and not in the 'common_names' while including the joining column 'mmnt_id'
 
-process_data <- function(v_dates, dt_chi) {}
+  new_names <- c(setdiff(names(dt_2), common_names), "mmnt_id")
+  # Now, we do the join
+
+  dt <- dt_1[dt_2[, ..new_names], on = .(mmnt_id), nomatch = 0]
+  return(dt)
+}
+
+plot_flux <- function(dt_flux, flux_name = "f_N2O_dry", sigma_name = "sigma_N2O_dry") {
+  dt_flux[, f     := get(flux_name)]
+  dt_flux[, sigma := get(sigma_name)]
+  dt_flux[, ci_lo := f - (sigma * 1.96)]
+  dt_flux[, ci_hi := f + (sigma * 1.96)]
+
+  p <- ggplot(dt_flux, aes(datect, f, colour = as.factor(chamber_id)))
+  p <- p + geom_hline(yintercept = 0)
+  p <- p + geom_point()
+  p <- p + geom_errorbar(aes(ymin = ci_lo, ymax = ci_hi))
+  p <- p + facet_wrap(~ trmt_id)
+  p <- p + ylab(flux_name)
+  p
+  
+  fname <- here("output", site_id, expt_id,
+    paste0(flux_name, ".png"))
+  ggsave(p, file = fname)
+  
+  return(p)
+}

@@ -15,8 +15,8 @@ tar_source()
 data_location <- "local drive"
 site_id <- "EH"
 expt_id <- "digestate1"
-start_date <- "2023-04-04"
-end_date   <- start_date
+start_date <- "2023-04-02"
+end_date   <- "2023-04-04"
 v_dates <- as.POSIXct(seq(from = as.Date(start_date), to = as.Date(end_date), by="day"))
 
 # Replace the target list below with your own:
@@ -27,27 +27,71 @@ list(
     command = read_metadata(fname_meta)
   ),
   tar_target(
-    name = dt_ghg,
-    command = get_data(v_dates[1], site_id, expt_id, data_location, l_meta)
+    name = dt_chi,
+    command = get_data(v_dates, site_id, expt_id, data_location, l_meta)
   ),
   tar_target(
     name = dt_unfilt,
-    command = remove_deadband(dt_ghg, method = "time fit", dryrun = TRUE)
+    command = remove_deadband(dt_chi, method = "time fit", dryrun = TRUE)
   ),
   tar_target(
     name = p_unfilt,
     command = plot_data_unfiltered(dt_unfilt)
   ),
   tar_target(
-    name = dt,
-    command = remove_deadband(dt_ghg, method = "time fit")
+    name = dt_filt,
+    command = remove_deadband(dt_chi, method = "time fit")
   ),
   tar_target(
-    name = p_ghg,
-    command = plot_data(dt)
+    name = p_chi_co2,
+    command = plot_chi(dt_filt, gas_name = "CO2_dry")
+  ),
+  tar_target(
+    name = p_chi_ch4,
+    command = plot_chi(dt_filt, gas_name = "CH4_dry")
+  ),
+  tar_target(
+    name = p_chi_n2o,
+    command = plot_chi(dt_filt, gas_name = "N2O_dry")
+  ),
+  tar_target(
+    name = dt_flux1,
+    command = calc_flux(dt_filt, gas_name = "H2O")
+  ),
+  tar_target(
+    name = dt_flux2,
+    command = calc_flux(dt_filt, gas_name = "CO2_dry")
+  ),
+  tar_target(
+    name = dt_flux3,
+    command = calc_flux(dt_filt, gas_name = "CH4_dry")
+  ),
+  tar_target(
+    name = dt_flux4,
+    command = calc_flux(dt_filt, gas_name = "N2O_dry")
+  ),
+  tar_target(
+    name = dt_fluxa,
+    command = join_fluxes(dt_flux1, dt_flux2)
+  ),
+  tar_target(
+    name = dt_fluxb,
+    command = join_fluxes(dt_fluxa, dt_flux3)
   ),
   tar_target(
     name = dt_flux,
-    command = process_data(v_dates, dt_ghg)
+    command = join_fluxes(dt_fluxb, dt_flux4)
+  ),
+  tar_target(
+    name = p_flux_co2,
+    command = plot_flux(dt_flux, flux_name = "f_CO2_dry", sigma_name = "sigma_CO2_dry")
+  ),
+  tar_target(
+    name = p_flux_ch4,
+    command = plot_flux(dt_flux, flux_name = "f_CH4_dry", sigma_name = "sigma_CH4_dry")
+  ),
+  tar_target(
+    name = p_flux_n2o,
+    command = plot_flux(dt_flux, flux_name = "f_N2O_dry", sigma_name = "sigma_N2O_dry")
   )
 )
