@@ -17,7 +17,9 @@ site_id <- "EHD"
 expt_id <- "digestate1"
 start_date <- "2023-04-01"
 end_date   <- "2023-04-04"
-example_date   <- as.POSIXct("2023-04-04")
+initial_deadband_width <- 150
+final_deadband_width   <- 150
+example_date   <- as.POSIXct(start_date)
 v_dates <- as.POSIXct(seq(from = as.Date(start_date), to = as.Date(end_date), by="day"))
 save_plots <- FALSE
 
@@ -30,22 +32,31 @@ list(
   ),
   tar_target(
     name = l_out,
-    command = get_data(v_dates, site_id, expt_id, data_location, l_meta, 
-      save_plots = save_plots)
+    command = get_data(v_dates, site_id, expt_id, data_location, l_meta,
+      initial_deadband_width = initial_deadband_width, 
+      final_deadband_width = final_deadband_width,
+      method = "time fit", dryrun = FALSE, save_plots = save_plots)
   ),
   tar_target(
     name = l_out_example,
     command = get_data(example_date, site_id, expt_id, data_location, l_meta, 
-      filter_deadband = FALSE, save_plots = save_plots)
+      filter_deadband = FALSE, 
+      initial_deadband_width = initial_deadband_width, 
+      final_deadband_width = final_deadband_width,
+      method = "time fit", dryrun = TRUE, save_plots = save_plots)
   ),
   tar_target(
     name = dt_unfilt,
     command = remove_deadband(l_out_example$dt_chi, 
+      initial_deadband_width = initial_deadband_width, 
+      final_deadband_width = final_deadband_width,
       method = "time fit", dryrun = TRUE)
   ),
   tar_target(
     name = p_unfilt,
-    command = plot_data_unfiltered(dt_unfilt)
+    command = plot_data_unfiltered(dt_unfilt, 
+      initial_deadband_width = initial_deadband_width, 
+      final_deadband_width = final_deadband_width)
   ),
   tar_target(
     name = p_chi_co2,

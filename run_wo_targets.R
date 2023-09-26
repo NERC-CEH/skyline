@@ -15,9 +15,21 @@ lapply(v_pkgs, require, character.only = TRUE)
 data_location <- "local drive"
 site_id <- "EHD"
 expt_id <- "digestate1"
-start_date <- "2023-03-28"
-end_date   <- "2023-08-31"
-example_date   <- "2023-04-04"
+start_date <- "2023-04-01"
+end_date   <- "2023-04-04"
+initial_deadband_width <- 150
+final_deadband_width   <- 150
+
+# site, experiment, and dates to process:
+data_location <- "local drive"
+site_id <- "EHD"
+expt_id <- "biochar1"
+start_date <- "2021-05-01"
+end_date   <- "2021-05-05"
+initial_deadband_width <- 300
+final_deadband_width   <- 250
+
+example_date   <- as.POSIXct(start_date)
 v_dates <- as.POSIXct(seq(from = as.Date(start_date), to = as.Date(end_date), by="day"))
 save_plots <- FALSE
 this_date <- example_date

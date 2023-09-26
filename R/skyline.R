@@ -103,6 +103,12 @@ get_ch_position_data <- function(v_fnames) {
   dt <- rbindlist(l_dt)
   
   dt[, datect := as.POSIXct(round(TIMESTAMP, "secs"))]
+  # rename position voltage consistently, depending whether sampled or averaged
+  if ("C_Voltage_Avg" %in% names(dt)) {
+    dt[, C_Voltage := C_Voltage_Avg]
+    dt[, C_Voltage_Avg := NULL]
+  }
+  
   # aggregate to 1 Hz - prob not needed as 1 Hz anyway (but is it always?)
   dt <- dt[, lapply(.SD, mean), .SDcols = c("C_Voltage"),  by = datect]
   # convert chamber position voltage to chamber ID
@@ -123,7 +129,10 @@ get_soilmet_data <- function(v_fnames) {
 
 get_data <- function(v_dates, this_site_id = "EHD", 
   this_expt_id = "digestate1", data_location, l_meta, 
-  filter_deadband = TRUE, save_plots = TRUE, write_all = FALSE) {
+  filter_deadband = TRUE, 
+  initial_deadband_width = 150, final_deadband_width = 150,
+  method = "time fit", dryrun = FALSE,
+  save_plots = TRUE, write_all = FALSE) {
   # create directories for output
   pname_csv <- here("output", this_site_id, this_expt_id, "csv")
   pname_png <- here("output", this_site_id, this_expt_id, "png")
@@ -144,7 +153,12 @@ get_data <- function(v_dates, this_site_id = "EHD",
     dt_pos <- get_ch_position_data(l_files$v_fnames_pos)
     # this works, but we want to rehape dt_met to long format, by datect and chamber_id
     # dt_met <- get_soilmet_data(l_files$v_fnames_met)
-    dt <- dt_ghg[dt_pos, on = .(datect = datect)]
+
+    dt <- dt_pos[dt_ghg, on = .(datect = datect), roll = TRUE]
+    # remove where chamber_id data is missing
+    dt <- dt[!is.na(chamber_id)]
+    ## WIP I used the line below for 1 Hz ch pos data. Does the above rolling join work for both?
+    # dt <- dt_ghg[dt_pos, on = .(datect = datect)]
     # dt <-  dt[dt_met, on = .(datect = datect)]
 
     # find unique mmnt_id from sequence of chamber_id
@@ -167,7 +181,14 @@ get_data <- function(v_dates, this_site_id = "EHD",
     # skip if chpos data is invalid - stuck on single value all day
     if (length(unique(dt$chamber_id)) < 2) next
     # remove deadband and plot
-    if (filter_deadband) dt <- remove_deadband(dt, method = "time fit")
+    if (filter_deadband) dt <- remove_deadband(dt, 
+      initial_deadband_width = initial_deadband_width, 
+      final_deadband_width = final_deadband_width, 
+      method = method, dryrun = dryrun)
+    # re-check how many data are left
+    dt[, n_filt := .N, by = mmnt_id]
+    # if too few data left (100?), remove the whole measurement sequence
+    dt <- dt[n_filt > 100]
     
     # save to file and list
     fname <- paste0(pname_csv, "/dt_chi_", round(this_date, "day"), ".csv")
@@ -188,7 +209,7 @@ get_data <- function(v_dates, this_site_id = "EHD",
       fname <- paste0(pname_png, "/n2o_", round(this_date, "day"), ".png")
       ggsave(p, file = fname)
     }
-    # calculate fluxes each day
+    # calculate fluxes each day    
     dt <- calc_flux(dt, gas_name = "H2O")
     dt <- calc_flux(dt, gas_name = "CO2_dry")
     dt <- calc_flux(dt, gas_name = "CH4_dry")
@@ -258,7 +279,8 @@ remove_deadband <- function(dt, initial_deadband_width = 150, final_deadband_wid
 plot_data_unfiltered <- function(dt_unfilt, initial_deadband_width = 150, final_deadband_width = 150) {
   dt1 <- dt_unfilt[seq_id == 1]
   dt_sfdband <- dt1[, .(start_final_deadband = .SD[1, start_final_deadband]), by = mmnt_id] 
-  p <- ggplot(dt1, aes(t, CO2_dry, colour = exclude)) + geom_point()
+  p <- ggplot(dt1, aes(t, CO2_dry, colour = exclude)) 
+  p <- p + geom_point(aes(size = t_resid))
   p <- p + facet_wrap(~ mmnt_id) + xlim(0, NA)
   p <- p + geom_vline(xintercept = initial_deadband_width)
   p <- p + geom_vline(data = dt_sfdband, aes(xintercept = start_final_deadband))
