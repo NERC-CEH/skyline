@@ -58,13 +58,13 @@ list(
     command = plot_chi(l_out$dt_chi[
       example_date == as.POSIXct(lubridate::date(datect))], 
       gas_name = "CH4_dry")
+  ),
+  tar_target(
+    name = p_chi_n2o,
+    command = plot_chi(l_out$dt_chi[
+      example_date == as.POSIXct(lubridate::date(datect))], 
+      gas_name = "N2O_dry")
   ) # ,
-  # tar_target(
-    # name = p_chi_n2o,
-    # command = plot_chi(l_out$dt_chi[
-      # example_date == as.POSIXct(lubridate::date(datect))], 
-      # gas_name = "N2O_dry")
-  # ) ,
   # # post-processing - separate script or give prefix?
   # tar_target(
     # name = dt_flux,
