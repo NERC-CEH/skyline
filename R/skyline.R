@@ -23,7 +23,7 @@ read_metadata <- function(fname_meta = "data-raw/skyline_meta-data.xlsx") {
   dt_site <- as.data.table(readxl::read_excel(fname_meta, sheet = "site"),      key=c("site_id"))
   dt_expt <- as.data.table(readxl::read_excel(fname_meta, sheet = "experiment"),key=c("site_id", "expt_id"))
   dt_trmt <- as.data.table(readxl::read_excel(fname_meta, sheet = "treatment"))
-  dt_mngt <- as.data.table(readxl::read_excel(fname_meta, sheet = "management_event"))
+  dt_mgmt <- as.data.table(readxl::read_excel(fname_meta, sheet = "management_event"))
   dt_cham <- as.data.table(readxl::read_excel(fname_meta, sheet = "chamber"))
   dt_badd <- as.data.table(readxl::read_excel(fname_meta, sheet = "bad_data"))
   dt_ancl <- as.data.table(readxl::read_excel(fname_meta, sheet = "ancilliay_timeseries_byChamber"))
@@ -34,7 +34,7 @@ read_metadata <- function(fname_meta = "data-raw/skyline_meta-data.xlsx") {
     dt_site = dt_site,
     dt_expt = dt_expt,
     dt_trmt = dt_trmt,
-    dt_mngt = dt_mngt,
+    dt_mgmt = dt_mgmt,
     dt_cham = dt_cham,
     dt_badd = dt_badd,
     dt_ancl = dt_ancl
@@ -42,7 +42,7 @@ read_metadata <- function(fname_meta = "data-raw/skyline_meta-data.xlsx") {
   )
 }
 
-check_data_available <- function(this_date, this_site_id = "EH", 
+check_data_available <- function(this_date, this_site_id = "EHD", 
   this_expt_id = "digestate1", this_data_location = "local drive", l_meta) {
   # subset metadata to site, experiment and data_location
   dt <- l_meta$dt_expt[
@@ -121,9 +121,9 @@ get_soilmet_data <- function(v_fnames) {
   return(dt)
 }
 
-get_data <- function(v_dates, this_site_id = "EH", 
+get_data <- function(v_dates, this_site_id = "EHD", 
   this_expt_id = "digestate1", data_location, l_meta, 
-  filter_deadband = TRUE, save_plots = TRUE, write_all_chi = FALSE) {
+  filter_deadband = TRUE, save_plots = TRUE, write_all = FALSE) {
   # create directories for output
   pname_csv <- here("output", this_site_id, this_expt_id, "csv")
   pname_png <- here("output", this_site_id, this_expt_id, "png")
@@ -189,13 +189,13 @@ get_data <- function(v_dates, this_site_id = "EH",
       ggsave(p, file = fname)
     }
     # calculate fluxes each day
-    dt_flux1 <- calc_flux(dt, gas_name = "H2O")
-    dt_flux2 <- calc_flux(dt, gas_name = "CO2_dry")
-    dt_flux3 <- calc_flux(dt, gas_name = "CH4_dry")
-    dt_flux4 <- calc_flux(dt, gas_name = "N2O_dry")
-    dt_fluxa <- join_fluxes(dt_flux1, dt_flux2)
-    dt_fluxb <- join_fluxes(dt_fluxa, dt_flux3)
-    dt_flux  <- join_fluxes(dt_fluxb, dt_flux4)
+    dt <- calc_flux(dt, gas_name = "H2O")
+    dt <- calc_flux(dt, gas_name = "CO2_dry")
+    dt <- calc_flux(dt, gas_name = "CH4_dry")
+    dt <- calc_flux(dt, gas_name = "N2O_dry")
+    # subset to just the first record 
+    dt_flux <- dt[, .SD[1], by = mmnt_id]
+
     # save to file and list
     fname <- paste0(pname_csv, "/dt_flux_", round(this_date, "day"), ".csv")
     fwrite(dt_flux, file = fname)
@@ -203,13 +203,16 @@ get_data <- function(v_dates, this_site_id = "EH",
   }
   dt_chi  <- rbindlist(l_dt_chi)
   dt_flux <- rbindlist(l_dt_flux)
-  # save to files
-  fname <- paste0(pname_csv, "/dt_chi_", round(v_dates[1], "day"), "_", 
-    round(v_dates[n_days], "day"), ".csv")
-  if (write_all_chi) fwrite(dt_chi, file = fname)
-  fname <- paste0(pname_csv, "/dt_flux_", round(v_dates[1], "day"), "_", 
-    round(v_dates[n_days], "day"), ".csv")
-  fwrite(dt_flux, file = fname)
+
+  if (write_all) {
+    # save to files
+    fname <- paste0(pname_csv, "/dt_chi_", round(v_dates[1], "day"), "_", 
+      round(v_dates[n_days], "day"), ".csv")
+    fwrite(dt_chi, file = fname)
+    fname <- paste0(pname_csv, "/dt_flux_", round(v_dates[1], "day"), "_", 
+      round(v_dates[n_days], "day"), ".csv")
+    fwrite(dt_flux, file = fname)
+  }
   return(list(dt_chi = dt_chi, dt_flux = dt_flux))
 }
 
@@ -265,7 +268,7 @@ p
   
 plot_chi <- function(dt, gas_name = "N2O_dry", initial_deadband_width = 150, final_deadband_width = 150) {
   p <- ggplot(dt, aes(t, get(gas_name), colour = as.factor(seq_id), group = mmnt_id)) 
-  p <- p + geom_point(alpha = 0.1)
+  p <- p + geom_point(alpha = 0.1) ## WIP setting alpha adds computation time - try without
   p <- p + xlim(0, NA) + ylab(gas_name)
   p <- p + stat_smooth(method = "lm")
   p <- p + facet_wrap(~ chamber_id)
@@ -300,9 +303,11 @@ calc_flux <- function(dt, gas_name = "CO2_dry", use_STP = TRUE, PA = 1000, TA = 
   }
   dt[, (flux_var_name) := dchi_dt        * rho * volume_m3 / area_m2]
   dt[, (sigma_var_name) := sigma_dchi_dt * rho * volume_m3 / area_m2]
-  
-  # subset to just the first record 
-  dt <- dt[, .SD[1], by = mmnt_id]
+
+  # remove un-needed variables
+  dt[, dchi_dt := NULL]
+  dt[, sigma_dchi_dt := NULL]
+
   return(dt)
 }
 
@@ -326,23 +331,21 @@ calc_flux_daily <- function(dt, gas_name = "CO2_dry", use_STP = TRUE, PA = 1000,
   return(dt)
 }
 
-join_fluxes <- function(dt_1, dt_2) {
-  common_names <- intersect(names(dt_1), names(dt_2))
-  # then, use setdiff to find the column names that are found in 'dt_2' 
-  # and not in the 'common_names' while including the joining column 'mmnt_id'
-
-  new_names <- c(setdiff(names(dt_2), common_names), "mmnt_id")
-  # Now, we do the join
-
-  dt <- dt_1[dt_2[, ..new_names], on = .(mmnt_id), nomatch = 0]
+combine_fluxes <- function(site_id, expt_id) {
+  pname_csv <- here("output", site_id, expt_id, "csv")
+  pattern <- paste0(.Platform$file.sep, "dt_flux.*\\.csv$")
+  v_fnames <- dir_ls(pname_csv, regexp = pattern)
+  l_dt <- lapply(v_fnames, fread)
+  dt <- rbindlist(l_dt)
   return(dt)
 }
 
-plot_flux <- function(dt_flux, flux_name = "f_N2O_dry", 
-  sigma_name = "sigma_N2O_dry", site_id, expt_id) {
+plot_flux <- function(dt_flux, flux_name = "f_N2O_dry",
+  sigma_name = "sigma_N2O_dry", site_id, expt_id, 
+  mult = 1, y_min = NA, y_max = NA) {
   
-  dt_flux[, f     := get(flux_name)]
-  dt_flux[, sigma := get(sigma_name)]
+  dt_flux[, f     := get(flux_name) * mult]
+  dt_flux[, sigma := get(sigma_name) * mult]
   dt_flux[, ci_lo := f - (sigma * 1.96)]
   dt_flux[, ci_hi := f + (sigma * 1.96)]
 
@@ -352,6 +355,7 @@ plot_flux <- function(dt_flux, flux_name = "f_N2O_dry",
   p <- p + geom_errorbar(aes(ymin = ci_lo, ymax = ci_hi))
   p <- p + facet_wrap(~ trmt_id)
   p <- p + ylab(flux_name)
+  p <- p + ylim(y_min, y_max)
   p
   
   fname <- here("output", site_id, expt_id,
@@ -361,8 +365,73 @@ plot_flux <- function(dt_flux, flux_name = "f_N2O_dry",
   return(p)
 }
 
+plot_n2o_flux <- function(dt_flux, flux_name = "f_N2O_dry",
+  sigma_name = "sigma_N2O_dry", this_site_id = "EHD", this_expt_id = "digestate1", 
+  l_meta, mult = 1000, y_min = -2, y_max = 10) {
+  
+  l_meta$dt_mgmt
+    # subset metadata to site, experiment and data_location
+  dt_mgmt <- l_meta$dt_mgmt[
+    this_site_id == site_id & 
+    this_expt_id == expt_id]
+  names(dt_mgmt) <- make.names(names(dt_mgmt))
+  str(dt_mgmt)
 
-# get_ghg_data <- function(this_date, this_site_id = "EH", 
+  dt_flux[, f     := get(flux_name) * mult]
+  dt_flux[, sigma := get(sigma_name) * mult]
+  dt_flux[, ci_lo := f - (sigma * 1.96)]
+  dt_flux[, ci_hi := f + (sigma * 1.96)]
+
+  p <- ggplot(dt_flux, aes(datect, f))
+  p <- p + geom_vline(data = dt_mgmt, aes(xintercept = start))
+  p <- p + geom_hline(yintercept = 0)
+  p <- p + geom_point(aes(colour = as.factor(chamber_id)))
+  p <- p + geom_errorbar(aes(ymin = ci_lo, ymax = ci_hi, colour = as.factor(chamber_id)))
+  p <- p + facet_wrap(~ trmt_id)
+  p <- p + ylab(flux_name)
+  p <- p + ylim(y_min, y_max)
+  p
+  
+  
+  fname <- here("output", site_id, expt_id,
+    paste0(flux_name, "_with_Nappl.png"))
+  ggsave(p, file = fname)
+  
+  return(p)
+}
+
+
+plot_n2o_flux_diurnal <- function(dt_flux, flux_name = "f_N2O_dry",
+  sigma_name = "sigma_N2O_dry", this_site_id = "EHD", this_expt_id = "digestate1", 
+  mult = 1000, y_min = -2, y_max = 2.5) {
+  
+  dt_flux[, f     := get(flux_name) * mult]
+  dt_flux[, sigma := get(sigma_name) * mult]
+  dt_flux[, ci_lo := f - (sigma * 1.96)]
+  dt_flux[, ci_hi := f + (sigma * 1.96)]
+  dt_flux[, h := lubridate::hour(datect) + lubridate::minute(datect)/60]
+
+  p <- ggplot(dt_flux, aes(h, f))
+  p <- p + geom_hline(yintercept = 0)
+  # p <- p + geom_point(aes(colour = as.factor(chamber_id)))
+  p <- p + geom_errorbar(aes(ymin = ci_lo, ymax = ci_hi), 
+    colour = "light yellow")
+   p <- p + stat_smooth()
+  # p <- p + facet_wrap(~ trmt_id)
+  p <- p + ylab(flux_name)
+  p <- p + ylim(y_min, y_max)
+  p
+  
+  
+  fname <- here("output", site_id, expt_id,
+    paste0(flux_name, "_diurnal.png"))
+  ggsave(p, file = fname)
+  
+  return(p)
+}
+
+
+# get_ghg_data <- function(this_date, this_site_id = "EHD", 
   # this_expt_id = "digestate1", this_data_location = "local drive", l_meta) {
   # # subset metadata to site, experiment and data_location
   # dt <- l_meta$dt_expt[
@@ -396,7 +465,7 @@ plot_flux <- function(dt_flux, flux_name = "f_N2O_dry",
 # }
 
 
-# get_ch_position_data <- function(this_date, this_site_id = "EH", 
+# get_ch_position_data <- function(this_date, this_site_id = "EHD", 
   # this_expt_id = "digestate1", this_data_location = data_location, l_meta) {
   # # subset metadata to site, experiment and data_location
   # dt <- l_meta$dt_expt[
@@ -429,7 +498,7 @@ plot_flux <- function(dt_flux, flux_name = "f_N2O_dry",
 # }
 
 # ## WIP this works, but we want to rehape dt_met to long format, by datect and chamber_id
-# get_soilmet_data <- function(this_date = v_dates[1], this_site_id = "EH", 
+# get_soilmet_data <- function(this_date = v_dates[1], this_site_id = "EHD", 
   # this_expt_id = "digestate1", this_data_location = data_location, l_meta) {
   # # subset metadata to site, experiment and data_location
   # dt <- l_meta$dt_expt[
@@ -454,5 +523,19 @@ plot_flux <- function(dt_flux, flux_name = "f_N2O_dry",
   # dt[, datect := as.POSIXct(round(TIMESTAMP, "mins"))]
   # dt[, TIMESTAMP := NULL]
   # dt[, RECORD := NULL]
+  # return(dt)
+# }
+
+# join_fluxes <- function(dt_1, dt_2) {
+  # common_names <- intersect(names(dt_1), names(dt_2))
+  # # then, use setdiff to find the column names that are found in 'dt_2' 
+  # # and not in the 'common_names' while including the joining column 'mmnt_id'
+
+  # new_names <- c(setdiff(names(dt_2), common_names), "mmnt_id")
+  # # Now, we do the join
+
+  # dt <- 
+  # dt_1[dt_2[, ..new_names], on = .(mmnt_id), nomatch = 0]
+  # dt_1[dt_2[, ..new_names], on = .(mmnt_id), nomatch = 0]
   # return(dt)
 # }

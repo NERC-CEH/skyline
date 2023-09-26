@@ -13,7 +13,7 @@ lapply(v_pkgs, require, character.only = TRUE)
 
 # site, experiment, and dates to process:
 data_location <- "local drive"
-site_id <- "EH"
+site_id <- "EHD"
 expt_id <- "digestate1"
 start_date <- "2023-03-28"
 end_date   <- "2023-08-31"
@@ -30,5 +30,7 @@ length(l_files$v_fnames_ghg)
 
 dt_ghg <- get_data(v_dates[1], site_id, expt_id, data_location, l_meta)
 dt_unfilt <- remove_deadband(dt_ghg, method = "time fit", dryrun = TRUE)
+
+dt_chi <- tar_read(dt_chi)
 dt <- remove_deadband(dt_ghg, method = "time fit")
 plot_data(dt)

@@ -1,55 +1,42 @@
 name|type|data|command|depend|seed|path|time|size|bytes|format|repository|iteration|parent|children|seconds|warnings|error
-calc_flux|function|c9ba4378d6c3e55b|||||||||||||||
+calc_flux|function|6b37e97322bb7eb7|||||||||||||||
 calc_flux_daily|function|c9ba4378d6c3e55b|||||||||||||||
-check_data_available|function|d6400446a8125262|||||||||||||||
-data|stem|83344c766543d6cb|43fae4011a0626f4|136bf5e07fbd9b1c|1588979285||t19622.5018899561s|6b7c32982bdf1591|1748|rds|local|vector|||0.01|package tibble was built under R version 4.1.3|
+check_data_available|function|4c66d8fa33b06a2d|||||||||||||||
+combine_fluxes|function|7070cceb6271eaf3|||||||||||||||
 data_location|object|601265abc39f5014|||||||||||||||
-deadband_example_date|object|e463c8f98d438ea0|||||||||||||||
-dt|stem|95e00d073e39423b|49eb8c8da734899c|62a488efabb7cc82|1581370339||t19623.9914679822s|7579af6fcd306138|1162485|qs|local|vector|||0.26||
-dt_chi|stem|776923b82de0541e|d8674980df484cf4|997d52366fc84d1e|-1077027297||t19625.5446097255s|4e8d8a7a468b41bd|10901195|qs|local|vector|||6.52||
-dt_filt|stem|94a46e9dec7a53f9|8b68b380ac2a1022|13119df2b569c0b5|-1938959248||t19625.5393646923s|542b4a1344acd0c8|8539918|qs|local|vector|||35.11||
-dt_flux|stem|8e3c4e42a08c1659|f53b48b38b06a7f0|da0a7354a67441ce|-918198347||t19625.5394596451s|2b20da5519bcf979|47466|qs|local|vector|||0.02||
-dt_flux1|stem|e0fbfc7f09d1a23b|776bf05a0b924d63|f50c9bd788f249f1|-1719079077||t19625.5394030919s|8254b07a8eb7a5ea|33542|qs|local|vector|||0.59||
-dt_flux2|stem|c4fb83487ec04214|0cc2ca00fa2b48dc|f50c9bd788f249f1|1748044972||t19625.5394094899s|90e9919a94a2a1fd|38215|qs|local|vector|||0.49||
-dt_flux3|stem|6bbf48a3a5c008b6|6227680dd8012e3f|f50c9bd788f249f1|-972535715||t19625.5394159626s|0a0d89cb62542cc3|42870|qs|local|vector|||0.5||
-dt_flux4|stem|53d981f0314c35f3|9e697733178b36cf|f50c9bd788f249f1|-605522915||t19625.539422424s|b298ffa169e29b20|47443|qs|local|vector|||0.5||
-dt_fluxa|stem|6b905526f289b79a|7b49471bfd47fc66|43baa1122abe757e|-413299993||t19625.5394580768s|da39c6f227769f7f|38256|qs|local|vector|||0||
-dt_fluxb|stem|63141625e9f53148|8678f4dd078ae4e8|07d1a6144d553246|378693968||t19625.5394588633s|3cedfb7eaca2b239|42907|qs|local|vector|||0||
-dt_ghg|stem|dd4e865623d536cb|e5d6c0d764e092d8|9076e92e95c7ec13|1503568053||t19624.9710501645s|0e1c94edcdc7ce78|8260496|qs|local|vector|||3.25||
-dt_unfilt|stem|65c21e15f8660d14|9f9094c4761810fa|bc5777fa08bdb339|-2122390738||t19625.6853222468s|dbe52f73ba973c38|3703689|qs|local|vector|||0.83||
-end_date|object|9b834d025b369f02|||||||||||||||
-example_date|object|add9d0a63294f32f|||||||||||||||
+dt_flux|stem|5120d05b99e7f8b7|c04bf443dd30ec79|a306905222119f67|-918198347||t19626.4756979205s|b6339ff9c4e887de|136|qs|local|vector|||0.64|package here was built under R version 4.1.2. package fs was built under R version 4.1.3. package data.table was built under R version 4.1.2. package readxl was built under R version 4.1.3. package units was built under R version 4.1.3. package qs was built under R version 4.1.2. package ggplot2 was built under R version 4.1.3|
+dt_unfilt|stem|b8af440db9c1e2df|9f9094c4761810fa|888cafa32d5ff81c|-2122390738||t19626.5558351296s|915c7478455bbd71|3712577|qs|local|vector|||0.22||
+end_date|object|e463c8f98d438ea0|||||||||||||||
+example_date|object|52ba0030ae2926f9|||||||||||||||
 expt_id|object|52d71bd74b43142d|||||||||||||||
-fname_meta|stem|00143277fdba0672|99092b9480340ee7|ef46db3751d8e999|1917417177|data-raw/skyline_meta-data.xlsx|t19625.4293312453s|0b08fc79e4fd20e2|52929|file|local|vector|||0.56|package here was built under R version 4.1.2. package fs was built under R version 4.1.3. package data.table was built under R version 4.1.2. package readxl was built under R version 4.1.3. package units was built under R version 4.1.3. package qs was built under R version 4.1.2. package ggplot2 was built under R version 4.1.3|
+fname_meta|stem|ed844f77ce7cd22a|99092b9480340ee7|ef46db3751d8e999|1917417177|data-raw/skyline_meta-data.xlsx|t19626.501899641s|2b693f3dfa6262f8|51033|file|local|vector|||0.63|package here was built under R version 4.1.2. package fs was built under R version 4.1.3. package data.table was built under R version 4.1.2. package readxl was built under R version 4.1.3. package units was built under R version 4.1.3. package qs was built under R version 4.1.2. package ggplot2 was built under R version 4.1.3|
 get_ch_position_data|function|294bd4e1a461c710|||||||||||||||
-get_data|function|75ba516aee16ec89|||||||||||||||
+get_data|function|b705c29f04b10a4a|||||||||||||||
 get_ghg_data|function|dcd7d7b83dbf9381|||||||||||||||
 get_soilmet_data|function|168465bbf8aa3ffd|||||||||||||||
-join_flux|function|c16458f00a0238ce|||||||||||||||
 join_fluxes|function|c878f991b3b14732|||||||||||||||
-l_meta|stem|96784595950a44d0|f8ad1aa1ce095729|beb4eefb8f146c15|-1991831992||t19625.4715478849s|6ebe45a359a2dbd2|4390|qs|local|vector|||2.23||
-l_out|stem|55cb7f26b1beeb38|d8674980df484cf4|933353d7105affdb|1316447038||t19625.6851679985s|27b681e66cfd5a7b|9894607|qs|local|vector|||17.64||
-l_out_example|stem|6a17861a5ea1beb6|be2eb2b226988c32|ed6629e8e2df5e32|-1800505908||t19625.6852093586s|0bc4f1e5a295d23f|2808758|qs|local|vector|||2.88||
-model|stem|d98909820f15fa94|ae83bc723fe2997c|b9bdaa5fb89312a7|1816327236||t19622.5018910182s|060eaebff2eb84c0|108|rds|local|vector|||0||
-p_chi_ch4|stem|b2c428e899188448|a8d354ef44fbe2f3|68260c573df2a820|395518654||t19625.6852168258s|bc6b8fa1753cccc3|7682975|qs|local|vector|||0.08||
-p_chi_co2|stem|9d46a3d65ee83469|8a57c68bae725818|68260c573df2a820|1028735101||t19625.6853059211s|023b24e35df6cff9|7679494|qs|local|vector|||0.11||
-p_chi_n2o|stem|e731f630a8dd6edf|29a0e6b763b41738|68260c573df2a820|-1314050709||t19625.6852563982s|023b24e35df6cff9|7679494|qs|local|vector|||0.09||
-p_flux_ch4|stem|8902eaba6eac5de4|7f701e8b4d9f2060|01096aaf4728f5db|-1090315334||t19625.6852489367s|32f8eca489f1305c|176533|qs|local|vector|||2.36||
-p_flux_co2|stem|be868d0bafc6a5bf|478d47066371dd2c|01096aaf4728f5db|388985982||t19625.6852976146s|17b5a4ada3db0447|176514|qs|local|vector|||1.5||
-p_flux_n2o|stem|23241763b87f1ec0|d8786b8217bc4a3d|01096aaf4728f5db|1434776353||t19625.6852787539s|17b80b221e8bac7c|176834|qs|local|vector|||1.48||
-p_ghg|stem|545c993843153ec5|bea9b2b886764eb5|2ed73c0d8e6b63de|1380834968||t19624.880062077s|937eb8473d8fb6e1|3623969|qs|local|vector|||0.05||
-p_pos|stem|35f4fc61d1a5c4a3|9429c0fee2090d21|8f6cc65704849aad|-471214809||t19622.6946779616s||2917669|qs|local|vector|||108.62|the condition has length  1 and only the first element will be used|invalid description argument
-p_unfilt|stem|b3f542909464be01|ce00b9cc2104c665|b95eef96c302048b|544624556||t19625.6853313925s|77e7622cfe0b27ea|6223772|qs|local|vector|||0.04||
+l_meta|stem|f6bb62ca329a1e35|f8ad1aa1ce095729|5451d0699f233075|-1991831992||t19626.5081412792s|7c19d7434462a92e|4348|qs|local|vector|||0.41||
+l_out|stem|9218f117550e0223|d8674980df484cf4|6ce385893d3389f5|1316447038||t19626.5558031346s|853c247e143d15e6|9873471|qs|local|vector|||7.36||
+l_out_example|stem|10d78a5c52fba9fc|be2eb2b226988c32|d433e1038435b665|-1800505908||t19626.5558208605s|b07bc6cfbb597ade|2814527|qs|local|vector|||1.22||
+p_chi_ch4|stem|e788374737de6327|a8d354ef44fbe2f3|dd21061f7f432bc0|395518654||t19626.5558246291s|5c2dc36807bc4e6e|7755665|qs|local|vector|||0.06||
+p_chi_co2|stem|0f183f5daa721f55|8a57c68bae725818|dd21061f7f432bc0|1028735101||t19626.5558293733s|5e90787ec68e1182|7757502|qs|local|vector|||0.05||
+p_chi_n2o|stem|94f264b92b85771f|29a0e6b763b41738|21b4282963d3dcdf|-1314050709||t19626.5082775372s|4c98e42da4343ff2|7757916|qs|local|vector|||0.06||
+p_flux_ch4|stem|0d814766426e1cf6|f67e43fe4e12b1cf|01da5d88fd5d8361|-1090315334||t19625.8974350976s|e2cd2b4468c84762|5281508|qs|local|vector|||6.15|1m22mRemoved 43 rows containing missing values geom_point.|
+p_flux_co2|stem|c4352c3bf141b42a|9497f64e7ff34b63|01da5d88fd5d8361|388985982||t19625.8975584779s|cab4181253692a77|5257590|qs|local|vector|||4.71||
+p_flux_n2o|stem|76b92dec3d37c022|da92be988e02e69e|01da5d88fd5d8361|1434776353||t19625.8974977569s|aa6985e4fe5c96fb|5286520|qs|local|vector|||4.82|1m22mRemoved 27 rows containing missing values geom_point.|
+p_flux_n2o_diurnal|stem|00176c0177ea4c78|7ad13a5069087c6d|de345c171e9ccccf|1513246380||t19625.9569006553s||6946856|qs|local|vector|||0.01||object f_N2O_dry not found
+p_flux_n2o_with_Nappl|stem|3cef458d3a383a47|74c44fde93fbf9da|abdb6300c77565c1|-1234823278||t19625.9426390356s|576cedc5babd0d9b|5299786|qs|local|vector|||6.17|1m22mRemoved 27 rows containing missing values geom_point.|
+p_unfilt|stem|832d4e3b2c34acd6|ce00b9cc2104c665|8ca37c39c8971736|544624556||t19626.5558383973s|e1a14ecf0d415ae9|6234264|qs|local|vector|||0.03||
 plot_chi|function|f57dfe65a75687a5|||||||||||||||
-plot_data|function|81b7f7694c79d34e|||||||||||||||
 plot_data_unfiltered|function|e59f2589e6d645dc|||||||||||||||
-plot_flux|function|2862207a453802e8|||||||||||||||
-process_data|function|235460aa18812e0b|||||||||||||||
+plot_flux|function|3c99eaeeb9a50234|||||||||||||||
+plot_n2o_flux|function|d1ac19f4a78d81ce|||||||||||||||
+plot_n2o_flux_diurnal|function|a80e5addaa7c6f9d|||||||||||||||
 read_cs_data|function|5a72e54235056c55|||||||||||||||
-read_metadata|function|d0a4fe8f8cee75c7|||||||||||||||
+read_metadata|function|d316c6b085c46ad0|||||||||||||||
 remove_deadband|function|0e63cca51db3d11c|||||||||||||||
 save_plots|object|3139974ca770b82a|||||||||||||||
-site_id|object|5f76cfd4acdca3eb|||||||||||||||
-start_date|object|187ede202901e250|||||||||||||||
-v_dates|object|226fc1f4f27ef0ae|||||||||||||||
+site_id|object|fb3e4b70f4691587|||||||||||||||
+start_date|object|a694b8447ac56fbb|||||||||||||||
+v_dates|object|1d256b0a9c4010fa|||||||||||||||
 v_pkgs|object|d1ca0532db89caad|||||||||||||||
