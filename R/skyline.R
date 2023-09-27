@@ -84,32 +84,57 @@ check_data_available <- function(this_date, this_site_id = "EHD",
     v_fnames_met = v_fnames_met))
 }
 
-get_ghg_data <- function(v_fnames, this_date) {
+get_ghg_data <- function(v_fnames, this_date, this_site_id, this_expt_id, l_meta) {
   l_dt <- lapply(v_fnames, fread)
   dt_ghg <- rbindlist(l_dt)
+  
+  # subset metadata to site, experiment and data_location
+  dt_expt <- l_meta$dt_expt[this_site_id == site_id & this_expt_id == expt_id][1]
 
-  dt_ghg[, datect := as.POSIXct(EPOCH_TIME, origin = "1970-01-01")]
+  # standardise instrument-specific variable names
+  v_names <- c("chi_h2o", "chi_co2", "chi_ch4", "chi_n2o", "P_cavity", "T_cavity")
+
+  if (dt_expt$GHG_instrument == "Aeris MIRA Ultra") {
+    dt_ghg[, datect := DateTime]
+    dt_ghg[, chi_ch4 := 0] # add dummy variable for methane - not measured
+    setnames(dt_ghg, c("H2O_ppm", "CO2_ppm", "chi_ch4", "N2O_ppm", 
+      "CavityPressure", "Tgas_degC"), v_names)
+    ## TODO: set instrument-specific units here too
+  } else { # default to Picarro
+    dt_ghg[, datect := as.POSIXct(EPOCH_TIME, origin = "1970-01-01")]
+    setnames(dt_ghg, c("H2O", "CO2_dry", "CH4_dry", "N2O_dry", 
+      "CavityPressure", "CavityTemp"), v_names) 
+    ## TODO: set instrument-specific units here too
+  }
+  
   dt_ghg[, datect := as.POSIXct(round(datect, "secs"))]
   # aggregate to 1 Hz i.e. do 1-sec averaging
-  dt_ghg <- dt_ghg[, lapply(.SD, mean), .SDcols = c("CavityPressure", "CavityTemp", 
-    "N2O_dry", "CO2_dry", "CH4_dry", "H2O"),  by = datect]
+  dt_ghg <- dt_ghg[, lapply(.SD, mean), .SDcols = v_names, by = datect]
+
   # subset to this_date before returning
   dt_ghg <- dt_ghg[this_date == as.POSIXct(lubridate::date(datect))]
   return(dt_ghg)
 }
 
 get_ch_position_data <- function(v_fnames) {
-  l_dt <- lapply(v_fnames, read_cs_data)
+  
+  if (fs::path_ext(v_fnames[1]) == "csv") l_dt <- lapply(v_fnames, fread)
+  if (fs::path_ext(v_fnames[1]) == "dat") l_dt <- lapply(v_fnames, read_cs_data)
   dt <- rbindlist(l_dt)
   
-  dt[, datect := as.POSIXct(round(TIMESTAMP, "secs"))]
+  # standardise time names
+  if ("DateTime"  %in% names(dt)) dt[, datect := as.POSIXct(DateTime)]
+  if ("TIMESTAMP" %in% names(dt)) dt[, datect := as.POSIXct(TIMESTAMP)]
+
   # rename position voltage consistently, depending whether sampled or averaged
   if ("C_Voltage_Avg" %in% names(dt)) {
     dt[, C_Voltage := C_Voltage_Avg]
     dt[, C_Voltage_Avg := NULL]
   }
   
-  # aggregate to 1 Hz - prob not needed as 1 Hz anyway (but is it always?)
+  # strip out excess columns and aggregate to 1 Hz (latter prob not needed 
+  # as 1 Hz anyway (but is it always?)
+  dt[, datect := as.POSIXct(round(datect, "secs"))]
   dt <- dt[, lapply(.SD, mean), .SDcols = c("C_Voltage"),  by = datect]
   # convert chamber position voltage to chamber ID
   dt[, chamber_id := as.factor(round(C_Voltage * 0.01, 0))]  
@@ -151,7 +176,8 @@ get_data <- function(v_dates, this_site_id = "EHD",
     # if no data today, move on to next day
     if (length(l_files$v_fnames_ghg) == 0 | length(l_files$v_fnames_pos) == 0) next
 
-    dt_ghg <- get_ghg_data(l_files$v_fnames_ghg, this_date)
+    dt_ghg <- get_ghg_data(l_files$v_fnames_ghg, this_date, 
+      this_site_id, this_expt_id, l_meta)
     dt_pos <- get_ch_position_data(l_files$v_fnames_pos)
     # this works, but we want to rehape dt_met to long format, by datect and chamber_id
     # dt_met <- get_soilmet_data(l_files$v_fnames_met)
@@ -172,7 +198,7 @@ get_data <- function(v_dates, this_site_id = "EHD",
     # enumerate the records within a mmnt sequence
     dt[, t := 1:.N, by = mmnt_id]
     dt[, n := .N, by = mmnt_id]
-    dt <- dt[!is.na(H2O)] # subset to valid ghg data only
+    dt <- dt[!is.na(chi_h2o)] # subset to valid ghg data only
 
     # join with chamber data  
     dt_cham <- l_meta$dt_cham[this_site_id == site_id & this_expt_id == expt_id]
@@ -189,8 +215,9 @@ get_data <- function(v_dates, this_site_id = "EHD",
       method = method, dryrun = dryrun)
     # re-check how many data are left
     dt[, n_filt := .N, by = mmnt_id]
-    # if too few data left (100?), remove the whole measurement sequence
-    dt <- dt[n_filt > 100]
+    # if too few data left (100?), or too many (ch position sensor stuck) 
+    # remove the whole measurement sequence
+    dt <- dt[n_filt > 100 & n_filt < 1800]
     
     # save to file and list
     if (dryrun) {
@@ -202,24 +229,24 @@ get_data <- function(v_dates, this_site_id = "EHD",
     l_dt_chi[[i]] <- dt
     
     if (save_plots) {
-      p <- plot_chi(dt, gas_name = "H2O")    
+      p <- plot_chi(dt, gas_name = "chi_h2o")    
       fname <- paste0(pname_png, "/h2o_", round(this_date, "day"), ".png")
       ggsave(p, file = fname)
-      p <- plot_chi(dt, gas_name = "CO2_dry")    
+      p <- plot_chi(dt, gas_name = "chi_co2")    
       fname <- paste0(pname_png, "/co2_", round(this_date, "day"), ".png")
       ggsave(p, file = fname)
-      p <- plot_chi(dt, gas_name = "CH4_dry")    
+      p <- plot_chi(dt, gas_name = "chi_ch4")    
       fname <- paste0(pname_png, "/ch4_", round(this_date, "day"), ".png")
       ggsave(p, file = fname)
-      p <- plot_chi(dt, gas_name = "N2O_dry")    
+      p <- plot_chi(dt, gas_name = "chi_n2o")    
       fname <- paste0(pname_png, "/n2o_", round(this_date, "day"), ".png")
       ggsave(p, file = fname)
     }
     # calculate fluxes each day    
-    dt <- calc_flux(dt, gas_name = "H2O")
-    dt <- calc_flux(dt, gas_name = "CO2_dry")
-    dt <- calc_flux(dt, gas_name = "CH4_dry")
-    dt <- calc_flux(dt, gas_name = "N2O_dry")
+    dt <- calc_flux(dt, gas_name = "chi_h2o")
+    dt <- calc_flux(dt, gas_name = "chi_co2")
+    dt <- calc_flux(dt, gas_name = "chi_ch4")
+    dt <- calc_flux(dt, gas_name = "chi_n2o")
     # subset to just the first record 
     dt_flux <- dt[, .SD[1], by = mmnt_id]
 
@@ -268,8 +295,8 @@ remove_deadband <- function(dt, initial_deadband_width = 150, final_deadband_wid
     # predict time based on all GHG concentrations, weighted towards the middle
     # and use this to filter out the nonlinear part
     if (length(unique(dt$mmnt_id)) > 1) {
-      form <- formula(t ~ CO2_dry + CH4_dry + N2O_dry + H2O)
-      # very slow on JASMIN: system.time(m <- lm(t ~ CO2_dry + CH4_dry + N2O_dry + H2O + mmnt_id, w = w, data = dt))
+      form <- formula(t ~ chi_co2 + chi_ch4 + chi_n2o + chi_h2o)
+      # very slow on JASMIN: system.time(m <- lm(t ~ chi_co2 + chi_ch4 + chi_n2o + chi_h2o + mmnt_id, w = w, data = dt))
       dt[, t_pred := predict(lm(form, w = w, data = .SD)), by = mmnt_id]
       dt[, t_resid := abs(scale(resid(lm(form, w = w, data = .SD)))), by = mmnt_id]
     } else { ## WIP would the above fail with only one mmnt_id? just in case:
@@ -290,7 +317,7 @@ plot_data_unfiltered <- function(dt_unfilt, initial_deadband_width = 150,
   final_deadband_width = 150, this_seq_id = 1) {
   dt1 <- dt_unfilt[this_seq_id == seq_id]
   dt_sfdband <- dt1[, .(start_final_deadband = .SD[1, start_final_deadband]), by = mmnt_id] 
-  p <- ggplot(dt1, aes(t, CO2_dry, colour = exclude)) 
+  p <- ggplot(dt1, aes(t, chi_co2, colour = exclude)) 
   p <- p + geom_point(aes(size = t_resid))
   p <- p + facet_wrap(~ mmnt_id) + xlim(0, NA)
   p <- p + geom_vline(xintercept = initial_deadband_width)
@@ -298,7 +325,7 @@ plot_data_unfiltered <- function(dt_unfilt, initial_deadband_width = 150,
   return(p)
 }
   
-plot_chi <- function(dt, gas_name = "N2O_dry", initial_deadband_width = 150, final_deadband_width = 150) {
+plot_chi <- function(dt, gas_name = "chi_n2o", initial_deadband_width = 150, final_deadband_width = 150) {
   p <- ggplot(dt, aes(t, get(gas_name), colour = as.factor(seq_id), group = mmnt_id)) 
   p <- p + geom_point(alpha = 0.1) ## WIP setting alpha adds computation time - try without
   p <- p + xlim(0, NA) + ylab(gas_name)
@@ -307,10 +334,11 @@ plot_chi <- function(dt, gas_name = "N2O_dry", initial_deadband_width = 150, fin
   return(p)
 }
 
-calc_flux <- function(dt, gas_name = "CO2_dry", use_STP = TRUE, PA = 1000, TA = 15) {
+calc_flux <- function(dt, gas_name = "chi_co2", use_STP = TRUE, PA = 1000, TA = 15) {
   form <- formula(paste(gas_name, "~ t"))
-  flux_var_name <- paste0("f_", gas_name)
-  sigma_var_name <- paste0("sigma_", gas_name)
+  # use substr to get rid of "chi" in gas name
+  flux_var_name  <- paste0("f_",     substr(gas_name, nchar(gas_name)-2, nchar(gas_name)))
+  sigma_var_name <- paste0("sigma_f_", substr(gas_name, nchar(gas_name)-2, nchar(gas_name)))
   dt[, dchi_dt := coef(lm(form, data = .SD))[2], by = mmnt_id]
   dt[, sigma_dchi_dt := summary(lm(form, data = .SD))$coefficients[2, 2], by = mmnt_id]
   if (use_STP) {
@@ -329,7 +357,7 @@ calc_flux <- function(dt, gas_name = "CO2_dry", use_STP = TRUE, PA = 1000, TA = 
   return(dt)
 }
 
-calc_flux_daily <- function(dt, gas_name = "CO2_dry", use_STP = TRUE, PA = 1000, TA = 15) {
+calc_flux_daily <- function(dt, gas_name = "chi_co2", use_STP = TRUE, PA = 1000, TA = 15) {
   form <- formula(paste(gas_name, "~ t"))
   flux_var_name <- paste0("f_", gas_name)
   sigma_var_name <- paste0("sigma_", gas_name)
@@ -429,10 +457,10 @@ plot_n2o_flux_diurnal <- function(dt_flux, flux_name = "f_N2O_dry",
   dt_flux[, h := lubridate::hour(datect) + lubridate::minute(datect)/60]
 
   p <- ggplot(dt_flux, aes(h, f))
-  p <- p + geom_hline(yintercept = 0)
-  # p <- p + geom_point(aes(colour = as.factor(chamber_id)))
+  p <- p + geom_point(colour = "yellow")
   p <- p + geom_errorbar(aes(ymin = ci_lo, ymax = ci_hi), 
-    colour = "light yellow")
+    colour = "dark orange")
+  p <- p + geom_hline(yintercept = 0)
    p <- p + stat_smooth(method = "gam")
   # p <- p + facet_wrap(~ trmt_id)
   p <- p + ylab(flux_name)
