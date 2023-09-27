@@ -14,14 +14,15 @@ tar_source()
 # site, experiment, and dates to process:
 data_location <- "local drive"
 site_id <- "EHD"
-expt_id <- "digestate1"
-start_date <- "2023-04-01"
-end_date   <- "2023-04-04"
-initial_deadband_width <- 150
-final_deadband_width   <- 150
-example_date   <- as.POSIXct(start_date)
+expt_id <- "biochar1"
+start_date <- "2021-04-30"
+end_date   <- "2021-06-14"
+initial_deadband_width <- 300
+final_deadband_width   <- 250
+
+example_date   <- as.POSIXct("2021-05-27")
 v_dates <- as.POSIXct(seq(from = as.Date(start_date), to = as.Date(end_date), by="day"))
-save_plots <- FALSE
+save_plots <- TRUE
 
 # Replace the target list below with your own:
 list(
@@ -40,7 +41,6 @@ list(
   tar_target(
     name = l_out_example,
     command = get_data(example_date, site_id, expt_id, data_location, l_meta, 
-      filter_deadband = FALSE, 
       initial_deadband_width = initial_deadband_width, 
       final_deadband_width = final_deadband_width,
       method = "time fit", dryrun = TRUE, save_plots = save_plots)

@@ -129,14 +129,16 @@ get_soilmet_data <- function(v_fnames) {
 
 get_data <- function(v_dates, this_site_id = "EHD", 
   this_expt_id = "digestate1", data_location, l_meta, 
-  filter_deadband = TRUE, 
   initial_deadband_width = 150, final_deadband_width = 150,
   method = "time fit", dryrun = FALSE,
   save_plots = TRUE, write_all = FALSE) {
   # create directories for output
-  pname_csv <- here("output", this_site_id, this_expt_id, "csv")
+  pname_csv        <- here("output", this_site_id, this_expt_id, "csv")
+  # subdirectory for unfiltered data, including deadbands
+  pname_csv_unfilt <- here("output", this_site_id, this_expt_id, "csv", "unfilt")
   pname_png <- here("output", this_site_id, this_expt_id, "png")
   fs::dir_create(pname_csv)
+  fs::dir_create(pname_csv_unfilt)
   fs::dir_create(pname_png)
   
   
@@ -181,7 +183,7 @@ get_data <- function(v_dates, this_site_id = "EHD",
     # skip if chpos data is invalid - stuck on single value all day
     if (length(unique(dt$chamber_id)) < 2) next
     # remove deadband and plot
-    if (filter_deadband) dt <- remove_deadband(dt, 
+    dt <- remove_deadband(dt, 
       initial_deadband_width = initial_deadband_width, 
       final_deadband_width = final_deadband_width, 
       method = method, dryrun = dryrun)
@@ -191,7 +193,11 @@ get_data <- function(v_dates, this_site_id = "EHD",
     dt <- dt[n_filt > 100]
     
     # save to file and list
-    fname <- paste0(pname_csv, "/dt_chi_", round(this_date, "day"), ".csv")
+    if (dryrun) {
+      fname <- paste0(pname_csv_unfilt, "/dt_chi_", round(this_date, "day"), ".csv")
+    } else {
+      fname <- paste0(pname_csv, "/dt_chi_", round(this_date, "day"), ".csv")
+    }
     fwrite(dt, file = fname)
     l_dt_chi[[i]] <- dt
     
@@ -218,7 +224,11 @@ get_data <- function(v_dates, this_site_id = "EHD",
     dt_flux <- dt[, .SD[1], by = mmnt_id]
 
     # save to file and list
-    fname <- paste0(pname_csv, "/dt_flux_", round(this_date, "day"), ".csv")
+    if (dryrun) {
+      fname <- paste0(pname_csv_unfilt, "/dt_flux_", round(this_date, "day"), ".csv")
+    } else {
+      fname <- paste0(pname_csv, "/dt_flux_", round(this_date, "day"), ".csv")
+    }
     fwrite(dt_flux, file = fname)
     l_dt_flux[[i]] <- dt_flux
   }
@@ -255,7 +265,7 @@ remove_deadband <- function(dt, initial_deadband_width = 150, final_deadband_wid
     dt[t < initial_deadband_width | t > start_final_deadband, w := 0]
     # ggplot(dt, aes(t, w, colour = mmnt_id)) + geom_point()
   
-    # predict time based on all GHG concentrations
+    # predict time based on all GHG concentrations, weighted towards the middle
     # and use this to filter out the nonlinear part
     if (length(unique(dt$mmnt_id)) > 1) {
       form <- formula(t ~ CO2_dry + CH4_dry + N2O_dry + H2O)
@@ -422,7 +432,6 @@ plot_n2o_flux <- function(dt_flux, flux_name = "f_N2O_dry",
   return(p)
 }
 
-
 plot_n2o_flux_diurnal <- function(dt_flux, flux_name = "f_N2O_dry",
   sigma_name = "sigma_N2O_dry", this_site_id = "EHD", this_expt_id = "digestate1", 
   mult = 1000, y_min = -2, y_max = 2.5) {
@@ -438,7 +447,7 @@ plot_n2o_flux_diurnal <- function(dt_flux, flux_name = "f_N2O_dry",
   # p <- p + geom_point(aes(colour = as.factor(chamber_id)))
   p <- p + geom_errorbar(aes(ymin = ci_lo, ymax = ci_hi), 
     colour = "light yellow")
-   p <- p + stat_smooth()
+   p <- p + stat_smooth(method = "gam")
   # p <- p + facet_wrap(~ trmt_id)
   p <- p + ylab(flux_name)
   p <- p + ylim(y_min, y_max)
@@ -451,113 +460,3 @@ plot_n2o_flux_diurnal <- function(dt_flux, flux_name = "f_N2O_dry",
   
   return(p)
 }
-
-
-# get_ghg_data <- function(this_date, this_site_id = "EHD", 
-  # this_expt_id = "digestate1", this_data_location = "local drive", l_meta) {
-  # # subset metadata to site, experiment and data_location
-  # dt <- l_meta$dt_expt[
-    # this_site_id == site_id & 
-    # this_expt_id == expt_id & 
-    # this_data_location == data_location]
-    
-  # # find the raw chi files
-  # v_fnames <- dir_ls(dt[, path_to_ghg_data])
-  # v_fnames <- sort(v_fnames)
-  
-  # v_dates_ghg <- substr(path_file(v_fnames), 12, 26)
-  # v_dates_ghg <- strptime(v_dates_ghg, "%Y%m%d-%H%M%S", tz = "GMT")  
-  # v_ind <- which(this_date == as.POSIXct(lubridate::date(v_dates_ghg)))
-  # if (length(v_ind) < 1) stop(paste("No GHG files on", this_date))
-  # # some data for this day may be in the last file from the previous day
-  # # so add this to the files read; do not do on first day
-  # if (v_ind[1] > 1) v_ind <- c(v_ind[1] - 1, v_ind)
-  # v_fnames[v_ind]
-  # l_dt <- lapply(v_fnames[v_ind], fread)
-  # dt_ghg <- rbindlist(l_dt)
-
-  # dt_ghg[, datect := as.POSIXct(EPOCH_TIME, origin = "1970-01-01")]
-  # dt_ghg[, datect := as.POSIXct(round(datect, "secs"))]
-  # # aggregate to 1 Hz i.e. do 1-sec averaging
-  # dt_ghg <- dt_ghg[, lapply(.SD, mean), .SDcols = c("CavityPressure", "CavityTemp", 
-    # "N2O_dry", "CO2_dry", "CH4_dry", "H2O"),  by = datect]
-  # # subset to this_date before returning
-  # dt_ghg <- dt_ghg[this_date == as.POSIXct(lubridate::date(datect))]
-  # return(dt_ghg)
-# }
-
-
-# get_ch_position_data <- function(this_date, this_site_id = "EHD", 
-  # this_expt_id = "digestate1", this_data_location = data_location, l_meta) {
-  # # subset metadata to site, experiment and data_location
-  # dt <- l_meta$dt_expt[
-    # this_site_id == site_id & 
-    # this_expt_id == expt_id & 
-    # this_data_location == data_location]
-
-  # # find the raw chpos files
-  # v_fnames <- dir_ls(dt[, path_to_chamber_position_data])
-  # v_fnames <- sort(v_fnames)
-  
-  # v_dates_ghg <- substr(path_file(v_fnames), 21, 35)
-  # v_dates_ghg <- strptime(v_dates_ghg, "%Y_%m_%d_%H%M", tz = "GMT")  
-  # v_ind <- which(this_date == as.POSIXct(lubridate::date(v_dates_ghg)))
-  # # some data for this day may be in the last file from the previous day
-  # # so add this to the files read; do not do on first day
-  # #if (v_ind[1] > 1) v_ind <- c(v_ind[1] - 1, v_ind)
-  # dt <- read_cs_data(v_fnames[v_ind])
-  # l_dt <- lapply(v_fnames[v_ind], read_cs_data)
-  # dt <- rbindlist(l_dt)
-  
-  # dt[, datect := as.POSIXct(round(TIMESTAMP, "secs"))]
-  # # aggregate to 1 Hz i.e. do 1-sec averaging
-  # dt <- dt[, lapply(.SD, mean), .SDcols = c("C_Voltage"),  by = datect]
-  # # subset to this_date before returning
-  # dt <- 
-  # # dt[this_date == as.POSIXct(round(datect, "days"))]
-  # dt[, chamber_id := as.factor(round(C_Voltage * 0.01, 0))]  
-  # return(dt)
-# }
-
-# ## WIP this works, but we want to rehape dt_met to long format, by datect and chamber_id
-# get_soilmet_data <- function(this_date = v_dates[1], this_site_id = "EHD", 
-  # this_expt_id = "digestate1", this_data_location = data_location, l_meta) {
-  # # subset metadata to site, experiment and data_location
-  # dt <- l_meta$dt_expt[
-    # this_site_id == site_id & 
-    # this_expt_id == expt_id & 
-    # this_data_location == data_location]
-
-  # # find the raw chpos files
-  # v_fnames <- dir_ls(dt[, path_to_soilmet_data])
-  # v_fnames <- sort(v_fnames)
-
-  # v_dates_ghg <- substr(path_file(v_fnames), 40, 49)
-  # v_dates_ghg <- strptime(v_dates_ghg, "%Y_%m_%d", tz = "GMT")  
-  # v_ind <- which(this_date == as.POSIXct(lubridate::date(v_dates_ghg)))
-  # # some data for this day may be in the last file from the previous day
-  # # so add this to the files read; do not do on first day
-  # #if (v_ind[1] > 1) v_ind <- c(v_ind[1] - 1, v_ind)
-  # dt <- read_cs_data(v_fnames[v_ind])
-  # l_dt <- lapply(v_fnames[v_ind], read_cs_data)
-  # dt <- rbindlist(l_dt)
-  
-  # dt[, datect := as.POSIXct(round(TIMESTAMP, "mins"))]
-  # dt[, TIMESTAMP := NULL]
-  # dt[, RECORD := NULL]
-  # return(dt)
-# }
-
-# join_fluxes <- function(dt_1, dt_2) {
-  # common_names <- intersect(names(dt_1), names(dt_2))
-  # # then, use setdiff to find the column names that are found in 'dt_2' 
-  # # and not in the 'common_names' while including the joining column 'mmnt_id'
-
-  # new_names <- c(setdiff(names(dt_2), common_names), "mmnt_id")
-  # # Now, we do the join
-
-  # dt <- 
-  # dt_1[dt_2[, ..new_names], on = .(mmnt_id), nomatch = 0]
-  # dt_1[dt_2[, ..new_names], on = .(mmnt_id), nomatch = 0]
-  # return(dt)
-# }

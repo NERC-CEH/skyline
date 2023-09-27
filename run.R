@@ -5,6 +5,11 @@ tar_outdated()
 system.time(tar_make())
 tar_load_everything(strict = FALSE)
 p_unfilt
+ggsave(p_unfilt,  file = "output/EHD/biochar1/p_unfilt.png")
+ggsave(p_chi_co2, file = "output/EHD/biochar1/p_chi_co2.png")
+ggsave(p_chi_ch4, file = "output/EHD/biochar1/p_chi_ch4.png")
+ggsave(p_chi_n2o, file = "output/EHD/biochar1/p_chi_n2o.png")
+
 p_chi_co2
 p_chi_ch4
 p_chi_n2o
