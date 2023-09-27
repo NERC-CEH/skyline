@@ -14,13 +14,13 @@ tar_source()
 # site, experiment, and dates to process:
 data_location <- "local drive"
 site_id <- "EHD"
-expt_id <- "biochar1"
-start_date <- "2021-04-30"
-end_date   <- "2021-06-14"
-initial_deadband_width <- 300
-final_deadband_width   <- 250
+expt_id <- "split1"
+start_date <- "2020-01-24"
+end_date   <- "2020-08-11"
+initial_deadband_width <- 150
+final_deadband_width   <- 150
 
-example_date   <- as.POSIXct("2021-05-27")
+example_date   <- as.POSIXct("2020-05-02")
 v_dates <- as.POSIXct(seq(from = as.Date(start_date), to = as.Date(end_date), by="day"))
 save_plots <- TRUE
 
@@ -56,7 +56,7 @@ list(
     name = p_unfilt,
     command = plot_data_unfiltered(dt_unfilt, 
       initial_deadband_width = initial_deadband_width, 
-      final_deadband_width = final_deadband_width)
+      final_deadband_width = final_deadband_width, this_seq_id = 4)
   ),
   tar_target(
     name = p_chi_co2,

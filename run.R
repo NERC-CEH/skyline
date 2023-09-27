@@ -5,10 +5,10 @@ tar_outdated()
 system.time(tar_make())
 tar_load_everything(strict = FALSE)
 p_unfilt
-ggsave(p_unfilt,  file = "output/EHD/biochar1/p_unfilt.png")
-ggsave(p_chi_co2, file = "output/EHD/biochar1/p_chi_co2.png")
-ggsave(p_chi_ch4, file = "output/EHD/biochar1/p_chi_ch4.png")
-ggsave(p_chi_n2o, file = "output/EHD/biochar1/p_chi_n2o.png")
+ggsave(p_unfilt,  file = "output/EHD/split1/p_unfilt__2021-05-27.png")
+ggsave(p_chi_co2, file = "output/EHD/split1/p_chi_co2_2021-05-27.png")
+ggsave(p_chi_ch4, file = "output/EHD/split1/p_chi_ch4_2021-05-27.png")
+ggsave(p_chi_n2o, file = "output/EHD/split1/p_chi_n2o_2021-05-27.png")
 
 p_chi_co2
 p_chi_ch4

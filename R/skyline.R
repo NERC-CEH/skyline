@@ -286,15 +286,15 @@ remove_deadband <- function(dt, initial_deadband_width = 150, final_deadband_wid
   return(dt)
 }
 
-plot_data_unfiltered <- function(dt_unfilt, initial_deadband_width = 150, final_deadband_width = 150) {
-  dt1 <- dt_unfilt[seq_id == 1]
+plot_data_unfiltered <- function(dt_unfilt, initial_deadband_width = 150, 
+  final_deadband_width = 150, this_seq_id = 1) {
+  dt1 <- dt_unfilt[this_seq_id == seq_id]
   dt_sfdband <- dt1[, .(start_final_deadband = .SD[1, start_final_deadband]), by = mmnt_id] 
   p <- ggplot(dt1, aes(t, CO2_dry, colour = exclude)) 
   p <- p + geom_point(aes(size = t_resid))
   p <- p + facet_wrap(~ mmnt_id) + xlim(0, NA)
   p <- p + geom_vline(xintercept = initial_deadband_width)
   p <- p + geom_vline(data = dt_sfdband, aes(xintercept = start_final_deadband))
-p
   return(p)
 }
   
@@ -302,22 +302,8 @@ plot_chi <- function(dt, gas_name = "N2O_dry", initial_deadband_width = 150, fin
   p <- ggplot(dt, aes(t, get(gas_name), colour = as.factor(seq_id), group = mmnt_id)) 
   p <- p + geom_point(alpha = 0.1) ## WIP setting alpha adds computation time - try without
   p <- p + xlim(0, NA) + ylab(gas_name)
-  p <- p + stat_smooth(method = "lm")
+  # p <- p + stat_smooth(method = "lm")
   p <- p + facet_wrap(~ chamber_id)
-
-  # p <- ggplot(dt, aes(datect, C_Voltage, colour = mmnt_id)) + geom_point()
-  # p <- ggplot(dt, aes(datect, t, colour = mmnt_id)) + geom_point()
-  # p <- ggplot(dt, aes(t, CH4_dry, colour = mmnt_id)) + geom_point()
-  # p <- p + facet_wrap(~ mmnt_id)
-  # p
-  
-  # p <- ggplot(dt, aes(t, t_pred, colour = mmnt_id)) + geom_point()
-  # p <- ggplot(dt[abs(t_resid) < 1000], aes(t, t_resid, colour = mmnt_id)) + geom_point()
-  # # p <- p + geom_abline()
-  # p <- p + facet_wrap(~ mmnt_id)
-  # p
-  # p <- ggplot(dt, aes(t, N2O_dry, colour = as.factor(seq_id))) + geom_point()
-  # p <- ggplot(dt, aes(t, CH4_dry, colour = as.factor(seq_id))) + geom_point()
   return(p)
 }
 
@@ -398,7 +384,7 @@ plot_flux <- function(dt_flux, flux_name = "f_N2O_dry",
 }
 
 plot_n2o_flux <- function(dt_flux, flux_name = "f_N2O_dry",
-  sigma_name = "sigma_N2O_dry", this_site_id = "EHD", this_expt_id = "digestate1", 
+  sigma_name = "sigma_N2O_dry", this_site_id, this_expt_id, 
   l_meta, mult = 1000, y_min = -2, y_max = 10) {
   
   l_meta$dt_mgmt
@@ -433,7 +419,7 @@ plot_n2o_flux <- function(dt_flux, flux_name = "f_N2O_dry",
 }
 
 plot_n2o_flux_diurnal <- function(dt_flux, flux_name = "f_N2O_dry",
-  sigma_name = "sigma_N2O_dry", this_site_id = "EHD", this_expt_id = "digestate1", 
+  sigma_name = "sigma_N2O_dry", this_site_id, this_expt_id, 
   mult = 1000, y_min = -2, y_max = 2.5) {
   
   dt_flux[, f     := get(flux_name) * mult]

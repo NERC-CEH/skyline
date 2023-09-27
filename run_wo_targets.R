@@ -33,8 +33,8 @@ final_deadband_width   <- 250
 data_location <- "local drive"
 site_id <- "EHD"
 expt_id <- "split1"
-start_date <- "2019-12-01"
-end_date   <- "2019-12-04"
+start_date <- "2020-05-01"
+end_date   <- "2020-05-05"
 initial_deadband_width <- 150
 final_deadband_width   <- 150
 
@@ -48,6 +48,8 @@ l_meta <- read_metadata(fname_meta)
 
 l_files <- check_data_available(this_date, site_id, expt_id, data_location, l_meta)
 length(l_files$v_fnames_ghg)
+length(l_files$v_fnames_pos)
+length(l_files$v_fnames_met)
 
 dt_ghg <- get_data(v_dates[1], site_id, expt_id, data_location, l_meta)
 dt_unfilt <- remove_deadband(dt_ghg, method = "time fit", dryrun = TRUE)
@@ -68,8 +70,8 @@ p_flux_n2o <- plot_flux(dt_flux, flux_name = "f_N2O_dry",
       sigma_name = "sigma_N2O_dry", site_id, expt_id, 
       mult = 1000, y_min = -2, y_max = 10)
 p_flux_n2o_with_Nappl <- plot_n2o_flux(dt_flux, flux_name = "f_N2O_dry",
-      sigma_name = "sigma_N2O_dry", this_site_id = "EHD", this_expt_id = "digestate1", 
+      sigma_name = "sigma_N2O_dry", this_site_id = "EHD", this_expt_id = "split1", 
       l_meta, mult = 1000, y_min = -2, y_max = 10)
 p_flux_n2o_diurnal <- plot_n2o_flux_diurnal(dt_flux, flux_name = "f_N2O_dry",
-      sigma_name = "sigma_N2O_dry", this_site_id = "EHD", this_expt_id = "digestate1", 
+      sigma_name = "sigma_N2O_dry", this_site_id = "EHD", this_expt_id = "split1", 
       mult = 1000, y_min = -2, y_max = 2.5)
