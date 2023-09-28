@@ -74,19 +74,54 @@ plot_data(dt)
 
 # post-processing - separate script or give prefix?
 dt_flux <- combine_fluxes(site_id, expt_id)
+
+get_soilmet_data(v_fnames)
+
 p_flux_co2 <- plot_flux(dt_flux, flux_name = "f_co2", 
       sigma_name = "sigma_f_co2", site_id, expt_id, 
-      mult = 1, y_min = min(dt_flux$f_co2), y_max = max(dt_flux$f_co2))
+      mult = 1, y_min = -30, y_max = 30)
+      # mult = 1, y_min = min(dt_flux$f_co2), y_max = max(dt_flux$f_co2))
 # p_flux_ch4 <- plot_flux(dt_flux, flux_name = "f_ch4", 
       # sigma_name = "sigma_f_ch4", site_id, expt_id, 
       # mult = 1000, y_min = min(dt_flux$f_ch4), y_max = max(dt_flux$f_ch4))
 p_flux_n2o <- plot_flux(dt_flux, flux_name = "f_n2o", 
       sigma_name = "sigma_f_n2o", site_id, expt_id, 
-      mult = 1, y_min = min(dt_flux$f_n2o), y_max = max(dt_flux$f_n2o))
+      mult = 1, y_min = -0.001, y_max = 0.01)
+      # mult = 1, y_min = min(dt_flux$f_n2o), y_max = max(dt_flux$f_n2o))
 
 p_flux_n2o_with_Nappl <- plot_n2o_flux(dt_flux, flux_name = "f_n2o",
       sigma_name = "sigma_f_n2o", this_site_id = "HRG", this_expt_id = "diurnal1", 
-      l_meta, mult = 1, y_min = min(dt_flux$f_n2o), y_max = max(dt_flux$f_n2o))
+      l_meta, 
+      mult = 1, y_min = -0.001, y_max = 0.025)
+      # mult = 1, y_min = min(dt_flux$f_n2o), y_max = max(dt_flux$f_n2o))
 p_flux_n2o_diurnal <- plot_n2o_flux_diurnal(dt_flux, flux_name = "f_n2o",
       sigma_name = "sigma_f_n2o", this_site_id = "HRG", this_expt_id = "diurnal1", 
       mult = 1, y_min = min(dt_flux$f_n2o), y_max = max(dt_flux$f_n2o))
+
+p_flux_co2_vs_swc <- plot_flux_vs_xvar(dt_flux, flux_name = "f_co2",
+  sigma_name = "sigma_f_co2", xvar_name = "SWC", site_id, expt_id, 
+  mult = 1, y_min = -30, y_max = 30)
+
+p_flux_co2_vs_ppfd <- plot_flux_vs_xvar(dt_flux, flux_name = "f_co2",
+  sigma_name = "sigma_f_co2", xvar_name = "PPFD_IN", site_id, expt_id, 
+  mult = 1, y_min = -30, y_max = 30)
+
+p_flux_co2_vs_ta <- plot_flux_vs_xvar(dt_flux, flux_name = "f_co2",
+  sigma_name = "sigma_f_co2", xvar_name = "TA", site_id, expt_id, 
+  mult = 1, y_min = -30, y_max = 30)
+
+p_flux_n2o_vs_swc <- plot_flux_vs_xvar(dt_flux, flux_name = "f_n2o",
+  sigma_name = "sigma_f_n2o", xvar_name = "SWC", site_id, expt_id, 
+  mult = 1, y_min = -0.001, y_max = 0.025)
+
+p_flux_n2o_vs_ta <- plot_flux_vs_xvar(dt_flux, flux_name = "f_n2o",
+  sigma_name = "sigma_f_n2o", xvar_name = "TA", site_id, expt_id, 
+  mult = 1, y_min = -0.001, y_max = 0.025)
+
+p_flux_n2o_vs_fco2 <- plot_flux_vs_xvar(dt_flux, flux_name = "f_n2o",
+  sigma_name = "sigma_f_n2o", xvar_name = "f_co2", site_id, expt_id, 
+  mult = 1, y_min = -0.001, y_max = 0.025)
+
+p_flux_n2o_vs_fh2o <- plot_flux_vs_xvar(dt_flux, flux_name = "f_n2o",
+  sigma_name = "sigma_f_n2o", xvar_name = "f_h2o", site_id, expt_id, 
+  mult = 1, y_min = -0.001, y_max = 0.025)

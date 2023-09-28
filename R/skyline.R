@@ -141,14 +141,25 @@ get_ch_position_data <- function(v_fnames) {
   return(dt)
 }
 
-## WIP this works, but we want to rehape dt_met to long format, by datect and chamber_id
 get_soilmet_data <- function(v_fnames) {
-  l_dt <- lapply(v_fnames, read_cs_data)
+  if (fs::path_ext(v_fnames[1]) == "csv") l_dt <- lapply(v_fnames, fread)
+  if (fs::path_ext(v_fnames[1]) == "dat") l_dt <- lapply(v_fnames, read_cs_data)
   dt <- rbindlist(l_dt)
+
+  # standardise time names
+  if ("DateTime"  %in% names(dt)) dt[, datect := as.POSIXct(DateTime)]
+  if ("TIMESTAMP" %in% names(dt)) dt[, datect := as.POSIXct(TIMESTAMP)]
   
-  dt[, datect := as.POSIXct(round(TIMESTAMP, "mins"))]
-  dt[, TIMESTAMP := NULL]
+  dt[, datect := as.POSIXct(round(datect, "mins"))]
   dt[, RECORD := NULL]
+  setnames(dt, c("C_Temp_C_Avg", "QR_Avg", "QR_C_Avg"),
+               c("TA",        "PPFD_IN", "PPFD_IN_ch"))
+  # reshape wide to long
+  dt <- melt(dt,
+    id.vars = c("datect", "TA", "PPFD_IN", "PPFD_IN_ch"),
+    measure.vars = patterns("VWC", "TSoil", "SoilPerm", "SoilEC", "Concentration"),
+    variable.name = "chamber_id",
+    value.name = c("SWC", "TS", "SoilPerm", "SoilEC", "O2_conc"))
   return(dt)
 }
 
@@ -180,14 +191,14 @@ get_data <- function(v_dates, this_site_id = "EHD",
       this_site_id, this_expt_id, l_meta)
     dt_pos <- get_ch_position_data(l_files$v_fnames_pos)
     # this works, but we want to rehape dt_met to long format, by datect and chamber_id
-    # dt_met <- get_soilmet_data(l_files$v_fnames_met)
+    dt_met <- get_soilmet_data(l_files$v_fnames_met)
 
     dt <- dt_pos[dt_ghg, on = .(datect = datect), roll = TRUE]
     # remove where chamber_id data is missing
     dt <- dt[!is.na(chamber_id)]
     ## WIP I used the line below for 1 Hz ch pos data. Does the above rolling join work for both?
     # dt <- dt_ghg[dt_pos, on = .(datect = datect)]
-    # dt <-  dt[dt_met, on = .(datect = datect)]
+    dt <- dt_met[dt, on = .(chamber_id = chamber_id, datect = datect), roll = TRUE]
 
     # find unique mmnt_id from sequence of chamber_id
     dt[, seq_id  := rleid(chamber_id)] # enumerate the sequence
@@ -470,6 +481,32 @@ plot_n2o_flux_diurnal <- function(dt_flux, flux_name = "f_N2O_dry",
   
   fname <- here("output", site_id, expt_id,
     paste0(flux_name, "_diurnal.png"))
+  ggsave(p, file = fname)
+  
+  return(p)
+}
+
+plot_flux_vs_xvar <- function(dt_flux, flux_name = "f_co2",
+  sigma_name = "sigma_f_co2", xvar_name = "SWC", site_id, expt_id, 
+  mult = 1, y_min = NA, y_max = NA) {
+  
+  dt_flux[, f     := get(flux_name) * mult]
+  dt_flux[, x     := get(xvar_name) * mult]
+  dt_flux[, sigma := get(sigma_name) * mult]
+  dt_flux[, ci_lo := f - (sigma * 1.96)]
+  dt_flux[, ci_hi := f + (sigma * 1.96)]
+
+  p <- ggplot(dt_flux, aes(x, f, colour = as.factor(trmt_id)))
+  p <- p + geom_hline(yintercept = 0)
+  p <- p + geom_point()
+  p <- p + geom_errorbar(aes(ymin = ci_lo, ymax = ci_hi))
+  p <- p + facet_wrap(~ trmt_id)
+  p <- p + ylab(flux_name) + xlab(xvar_name)
+  p <- p + ylim(y_min, y_max)
+  p
+  
+  fname <- here("output", site_id, expt_id,
+    paste0(flux_name, "_vs_", xvar_name, ".png"))
   ggsave(p, file = fname)
   
   return(p)

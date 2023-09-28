@@ -15,8 +15,8 @@ tar_source()
 data_location <- "local drive"
 site_id <- "HRG"
 expt_id <- "diurnal1"
-start_date <- "2023-05-20"
-end_date   <- "2023-06-05"
+start_date <- "2023-05-05"
+end_date   <- "2023-09-05"
 initial_deadband_width <- 75
 final_deadband_width   <- 20
 
