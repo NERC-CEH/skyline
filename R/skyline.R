@@ -142,7 +142,8 @@ get_ch_position_data <- function(v_fnames) {
 }
 
 get_soilmet_data <- function(v_fnames) {
-  if (fs::path_ext(v_fnames[1]) == "csv") l_dt <- lapply(v_fnames, fread)
+  if (fs::path_ext(v_fnames[1]) == "csv") l_dt <- lapply(v_fnames, fread, 
+    na.strings = c("NAN"))
   if (fs::path_ext(v_fnames[1]) == "dat") l_dt <- lapply(v_fnames, read_cs_data)
   dt <- rbindlist(l_dt)
 
@@ -154,12 +155,20 @@ get_soilmet_data <- function(v_fnames) {
   dt[, RECORD := NULL]
   setnames(dt, c("C_Temp_C_Avg", "QR_Avg", "QR_C_Avg"),
                c("TA",        "PPFD_IN", "PPFD_IN_ch"))
+               
+  # if any column contains only NAs, it gets logical type and crashes melt
+  # by trying to combine logical and numeric types in one column
+  # so convert any logicals to numeric
+  v_logical <- sapply(dt, is.logical)
+  v_logical <- names(which(v_logical))
+  dt[,  paste0(v_logical) := lapply(.SD, as.numeric), .SDcols = v_logical]
+
   # reshape wide to long
   dt <- melt(dt,
     id.vars = c("datect", "TA", "PPFD_IN", "PPFD_IN_ch"),
-    measure.vars = patterns("VWC", "TSoil", "SoilPerm", "SoilEC", "Concentration"),
+    measure.vars = patterns("VWC", "TSoil", "SoilPerm", "SoilEC"),
     variable.name = "chamber_id",
-    value.name = c("SWC", "TS", "SoilPerm", "SoilEC", "O2_conc"))
+    value.name = c("SWC", "TS", "SoilPerm", "SoilEC"))
   return(dt)
 }
 
@@ -183,6 +192,7 @@ get_data <- function(v_dates, this_site_id = "EHD",
   l_dt_flux <- list()
   for (i in seq_along(v_dates)) {
     this_date <- v_dates[i]
+    print(paste("Processing ", this_date))
     l_files <- check_data_available(this_date, this_site_id, this_expt_id, data_location, l_meta)
     # if no data today, move on to next day
     if (length(l_files$v_fnames_ghg) == 0 | length(l_files$v_fnames_pos) == 0) next
@@ -487,21 +497,23 @@ plot_n2o_flux_diurnal <- function(dt_flux, flux_name = "f_N2O_dry",
 }
 
 plot_flux_vs_xvar <- function(dt_flux, flux_name = "f_co2",
-  sigma_name = "sigma_f_co2", xvar_name = "SWC", site_id, expt_id, 
-  mult = 1, y_min = NA, y_max = NA) {
+  sigma_name = "sigma_f_co2", xvar_name = "SWC", 
+  colour_name = "trmt_id", facet_name = "trmt_id",
+  site_id, expt_id, 
+  y_min = NA, y_max = NA) {
   
-  dt_flux[, f     := get(flux_name) * mult]
-  dt_flux[, x     := get(xvar_name) * mult]
-  dt_flux[, sigma := get(sigma_name) * mult]
+  dt_flux[, f     := get(flux_name)]
+  dt_flux[, x     := get(xvar_name)]
+  dt_flux[, sigma := get(sigma_name)]
   dt_flux[, ci_lo := f - (sigma * 1.96)]
   dt_flux[, ci_hi := f + (sigma * 1.96)]
 
-  p <- ggplot(dt_flux, aes(x, f, colour = as.factor(trmt_id)))
-  p <- p + geom_hline(yintercept = 0)
+  p <- ggplot(dt_flux, aes(x, f, colour = as.factor(get(colour_name))))
   p <- p + geom_point()
   p <- p + geom_errorbar(aes(ymin = ci_lo, ymax = ci_hi))
-  p <- p + facet_wrap(~ trmt_id)
-  p <- p + ylab(flux_name) + xlab(xvar_name)
+  p <- p + geom_hline(yintercept = 0)
+  p <- p + facet_wrap(~ get(facet_name))
+  p <- p + ylab(flux_name) + xlab(xvar_name) + labs(colour = NULL)
   p <- p + ylim(y_min, y_max)
   p
   
