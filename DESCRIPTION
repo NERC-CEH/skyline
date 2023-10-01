@@ -9,11 +9,21 @@ Description: This package contains code for the analysis of automated chamber me
 Depends: R (>= 3.1.2)
 License: MIT + file LICENSE
 LazyData: true
-Suggests: testthat,
+Suggests: 
+    testthat,
     knitr,
-    covr
+    covr,
+    roxygen2,
+    rmarkdown,
+    pkgload
 VignetteBuilder: knitr
 Imports: 
-    git2r,
-    gh
-RoxygenNote: 6.0.1
+    rlang (>= 0.4.11),
+    data.table,
+    here,
+    ggplot2,
+    fs,
+    readxl,
+    lubridate
+RoxygenNote: 7.2.3
+Encoding: UTF-8

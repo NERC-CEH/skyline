@@ -1,4 +1,4 @@
 library(testthat)
-library(template)
+library(skyline)
 
-test_check("template")
+test_check("skyline")
