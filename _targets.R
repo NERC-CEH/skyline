@@ -12,18 +12,21 @@ tar_option_set(
 # Run the R scripts in the R/ folder with your custom functions:
 tar_source()
 
-# site, experiment, and dates to process:
+data.table::setDTthreads(threads = 1)
+data.table::getDTthreads()
+
 data_location <- "local drive"
+# site, experiment, and dates to process:
 site_id <- "HRG"
 expt_id <- "diurnal1"
-start_date <- "2023-05-05"
-end_date   <- "2023-09-05"
+start_date <- "2023-07-01" # "2023-05-04"
+end_date   <- "2023-07-04" # "2023-09-15"
 initial_deadband_width <- 75
 final_deadband_width   <- 20
 
 example_date   <- as.POSIXct(start_date)
 v_dates <- as.POSIXct(seq(from = as.Date(start_date), to = as.Date(end_date), by="day"))
-save_plots <- TRUE
+save_plots <- FALSE
 
 # Replace the target list below with your own:
 list(
@@ -37,28 +40,28 @@ list(
     command = get_data(v_dates, site_id, expt_id, data_location, l_meta,
       initial_deadband_width = initial_deadband_width, 
       final_deadband_width = final_deadband_width,
-      method = "time fit", dryrun = FALSE, save_plots = save_plots)
-  ),
-  tar_target(
-    name = l_out_example,
-    command = get_data(example_date, site_id, expt_id, data_location, l_meta, 
-      initial_deadband_width = initial_deadband_width, 
-      final_deadband_width = final_deadband_width,
       method = "time fit", dryrun = TRUE, save_plots = save_plots)
   ),
-  tar_target(
-    name = dt_unfilt,
-    command = remove_deadband(l_out_example$dt_chi, 
-      initial_deadband_width = initial_deadband_width, 
-      final_deadband_width = final_deadband_width,
-      method = "time fit", dryrun = TRUE)
-  ),
-  tar_target(
-    name = p_unfilt,
-    command = plot_data_unfiltered(dt_unfilt, 
-      initial_deadband_width = initial_deadband_width, 
-      final_deadband_width = final_deadband_width, this_seq_id = 4)
-  ),
+  # tar_target(
+    # name = l_out_example,
+    # command = get_data(example_date, site_id, expt_id, data_location, l_meta, 
+      # initial_deadband_width = initial_deadband_width, 
+      # final_deadband_width = final_deadband_width,
+      # method = "time fit", dryrun = TRUE, save_plots = save_plots)
+  # ),
+  # tar_target(
+    # name = dt_unfilt,
+    # command = remove_deadband(l_out_example$dt_chi, 
+      # initial_deadband_width = initial_deadband_width, 
+      # final_deadband_width = final_deadband_width,
+      # method = "time fit", dryrun = TRUE)
+  # ),
+  # tar_target(
+    # name = p_unfilt,
+    # command = plot_data_unfiltered(dt_unfilt, 
+      # initial_deadband_width = initial_deadband_width, 
+      # final_deadband_width = final_deadband_width, this_seq_id = 4)
+  # ),
   tar_target(
     name = p_chi_co2,
     command = plot_chi(l_out$dt_chi[

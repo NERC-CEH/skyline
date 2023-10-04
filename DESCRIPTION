@@ -22,7 +22,7 @@ Imports:
     data.table,
     here,
     ggplot2,
-    fs,
+    fs (>= 1.5.0),
     readxl,
     lubridate
 RoxygenNote: 7.2.3

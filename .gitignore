@@ -8,3 +8,4 @@ vignettes/*_cache/
 _targets/
 data-raw/skyline_meta-data - Copy.xlsx
 data-raw/~$skyline_meta-data.xlsx
+*.backup_R

@@ -1,5 +1,4 @@
 #' @import ggplot2
-#' @import ggplot2
 
 #' @title read_cs_data
 #' @description Read CSI TOA5 data from a file.
@@ -186,10 +185,14 @@ get_soilmet_data <- function(v_fnames) {
   setnames(dt, c("C_Temp_C_Avg", "QR_Avg", "QR_C_Avg"),
     c("TA",        "PPFD_IN", "PPFD_IN_ch"))
 
-  # if any column contains only NAs, it gets logical type and crashes melt
-  # by trying to combine logical and numeric types in one column
-  # so convert any logicals to numeric
+  # If any column contains only NAs, it gets logical type and crashes melt
+  # by trying to combine logical and numeric types in one column. 
+  # If any column contains only 0s, it gets integer type; melt gives a warning
+  # about combining integer and numeric types in one column. 
+  # So, convert any logicals or integers to numeric.
   v_logical <- sapply(dt, is.logical)
+  v_integer <- sapply(dt, is.integer)
+  v_logical <- v_logical | v_integer
   if (any(v_logical)) {
     v_logical <- names(which(v_logical))
     dt[,  paste0(v_logical) := lapply(.SD, as.numeric), .SDcols = v_logical]
@@ -211,12 +214,14 @@ get_data <- function(v_dates, this_site_id = "HRG",
                      save_plots = TRUE, write_all = FALSE) {
   # create directories for output
   pname_csv        <- here("output", this_site_id, this_expt_id, "csv")
+  pname_png        <- here("output", this_site_id, this_expt_id, "png")
   # subdirectory for unfiltered data, including deadbands
   pname_csv_unfilt <- here("output", this_site_id, this_expt_id, "csv", "unfilt")
-  pname_png <- here("output", this_site_id, this_expt_id, "png")
+  pname_png_unfilt <- here("output", this_site_id, this_expt_id, "png", "unfilt")
   fs::dir_create(pname_csv)
-  fs::dir_create(pname_csv_unfilt)
   fs::dir_create(pname_png)
+  fs::dir_create(pname_csv_unfilt)
+  fs::dir_create(pname_png_unfilt)
 
 
   n_days <- length(v_dates)
@@ -232,7 +237,6 @@ get_data <- function(v_dates, this_site_id = "HRG",
     dt_ghg <- get_ghg_data(l_files$v_fnames_ghg, this_date,
       this_site_id, this_expt_id, l_meta)
     dt_pos <- get_ch_position_data(l_files$v_fnames_pos)
-    # this works, but we want to rehape dt_met to long format, by datect and chamber_id
     dt_met <- get_soilmet_data(l_files$v_fnames_met)
 
     dt <- dt_pos[dt_ghg, on = .(datect = datect), roll = TRUE]
@@ -244,7 +248,7 @@ get_data <- function(v_dates, this_site_id = "HRG",
     dt[, seq_id  := rleid(chamber_id)] # enumerate the sequence
     # then enumerate the sequence for a given chamber
     dt[, seq_id := rleid(seq_id), by = chamber_id]
-    dt[, mmnt_id := paste(round(datect, "day"), chamber_id, seq_id, sep = "_")]
+    dt[, mmnt_id := paste(lubridate::date(dt$datect), chamber_id, seq_id, sep = "_")]
 
     # enumerate the records within a mmnt sequence
     dt[, t := seq_len(.N), by = mmnt_id]
@@ -269,29 +273,34 @@ get_data <- function(v_dates, this_site_id = "HRG",
     # if too few data left (100?), or too many (ch position sensor stuck)
     # remove the whole measurement sequence
     dt <- dt[n_filt > 100 & n_filt < 1800]
-
+    # skip if no data left after filtering
+    if (nrow(dt) == 0) next
+    
     # save to file and list
     if (dryrun) {
-      fname <- paste0(pname_csv_unfilt, "/dt_chi_", round(this_date, "day"), ".csv")
+      fname <- paste0(pname_csv_unfilt, "/dt_chi_", lubridate::date(this_date), ".csv")
+      p <- plot_data_unfiltered(dt, 
+        initial_deadband_width = initial_deadband_width, 
+        final_deadband_width = final_deadband_width, this_seq_id = 4)
     } else {
-      fname <- paste0(pname_csv, "/dt_chi_", round(this_date, "day"), ".csv")
+      fname <- paste0(pname_csv, "/dt_chi_", lubridate::date(this_date), ".csv")
     }
     fwrite(dt, file = fname)
     l_dt_chi[[i]] <- dt
 
     if (save_plots) {
       p <- plot_chi(dt, gas_name = "chi_h2o")
-      fname <- paste0(pname_png, "/h2o_", round(this_date, "day"), ".png")
-      ggsave(p, file = fname)
+      fname <- paste0(pname_png, "/h2o_", lubridate::date(this_date), ".png")
+      ggsave(p, file = fname, type="cairo")
       p <- plot_chi(dt, gas_name = "chi_co2")
-      fname <- paste0(pname_png, "/co2_", round(this_date, "day"), ".png")
-      ggsave(p, file = fname)
+      fname <- paste0(pname_png, "/co2_", lubridate::date(this_date), ".png")
+      ggsave(p, file = fname, type="cairo")
       p <- plot_chi(dt, gas_name = "chi_ch4")
-      fname <- paste0(pname_png, "/ch4_", round(this_date, "day"), ".png")
-      ggsave(p, file = fname)
+      fname <- paste0(pname_png, "/ch4_", lubridate::date(this_date), ".png")
+      ggsave(p, file = fname, type="cairo")
       p <- plot_chi(dt, gas_name = "chi_n2o")
-      fname <- paste0(pname_png, "/n2o_", round(this_date, "day"), ".png")
-      ggsave(p, file = fname)
+      fname <- paste0(pname_png, "/n2o_", lubridate::date(this_date), ".png")
+      ggsave(p, file = fname, type="cairo")
     }
     # calculate fluxes each day
     dt <- calc_flux(dt, gas_name = "chi_h2o")
@@ -303,9 +312,9 @@ get_data <- function(v_dates, this_site_id = "HRG",
 
     # save to file and list
     if (dryrun) {
-      fname <- paste0(pname_csv_unfilt, "/dt_flux_", round(this_date, "day"), ".csv")
+      fname <- paste0(pname_csv_unfilt, "/dt_flux_", lubridate::date(this_date), ".csv")
     } else {
-      fname <- paste0(pname_csv, "/dt_flux_", round(this_date, "day"), ".csv")
+      fname <- paste0(pname_csv, "/dt_flux_", lubridate::date(this_date), ".csv")
     }
     fwrite(dt_flux, file = fname)
     l_dt_flux[[i]] <- dt_flux
@@ -315,11 +324,11 @@ get_data <- function(v_dates, this_site_id = "HRG",
 
   if (write_all) {
     # save to files
-    fname <- paste0(pname_csv, "/dt_chi_", round(v_dates[1], "day"), "_",
-      round(v_dates[n_days], "day"), ".csv")
+    fname <- paste0(pname_csv, "/dt_chi_", lubridate::date(v_dates[1]), "_",
+      lubridate::date(v_dates[n_days]), ".csv")
     fwrite(dt_chi, file = fname)
-    fname <- paste0(pname_csv, "/dt_flux_", round(v_dates[1], "day"), "_",
-      round(v_dates[n_days], "day"), ".csv")
+    fname <- paste0(pname_csv, "/dt_flux_", lubridate::date(v_dates[1]), "_",
+      lubridate::date(v_dates[n_days]), ".csv")
     fwrite(dt_flux, file = fname)
   }
   return(list(dt_chi = dt_chi, dt_flux = dt_flux))
@@ -361,13 +370,24 @@ remove_deadband <- function(dt, initial_deadband_width = 150, final_deadband_wid
 
 plot_data_unfiltered <- function(dt_unfilt, initial_deadband_width = 150,
                                  final_deadband_width = 150, this_seq_id = 1) {
+  # if the requested seq_id is not available, set to first value in list
+  if (this_seq_id %!in% dt_unfilt$seq_id) this_seq_id <- 
+    unique(dt_unfilt$seq_id)[1]
   dt1 <- dt_unfilt[this_seq_id == seq_id]
-  dt_sfdband <- dt1[, .(start_final_deadband = .SD[1, start_final_deadband]), by = mmnt_id]
+  dt_sfdband <- dt1[, .(start_final_deadband = .SD[1, start_final_deadband]), 
+    by = mmnt_id]
+
   p <- ggplot(dt1, aes(t, chi_co2, colour = exclude))
   p <- p + geom_point(aes(size = t_resid))
   p <- p + facet_wrap(~mmnt_id) + xlim(0, NA)
   p <- p + geom_vline(xintercept = initial_deadband_width)
   p <- p + geom_vline(data = dt_sfdband, aes(xintercept = start_final_deadband))
+  
+  fname <- here("output", dt1$site_id[1], dt1$expt_id[1], "png", "unfilt",
+    paste0("chi_co2_", as.character(lubridate::date(dt1$datect[1])), 
+    "_", this_seq_id, ".png"))
+  ggsave(p, file = fname, type="cairo")
+  
   return(p)
 }
 
@@ -432,7 +452,7 @@ plot_flux <- function(dt_flux, flux_name = "f_N2O_dry",
 
   fname <- here("output", site_id, expt_id,
     paste0(flux_name, ".png"))
-  ggsave(p, file = fname)
+  ggsave(p, file = fname, type="cairo")
 
   return(p)
 }
@@ -467,7 +487,7 @@ plot_n2o_flux <- function(dt_flux, flux_name = "f_N2O_dry",
 
   fname <- here("output", site_id, expt_id,
     paste0(flux_name, "_with_Nappl.png"))
-  ggsave(p, file = fname)
+  ggsave(p, file = fname, type="cairo")
 
   return(p)
 }
@@ -495,7 +515,7 @@ plot_n2o_flux_diurnal <- function(dt_flux, flux_name = "f_N2O_dry",
 
   fname <- here("output", site_id, expt_id,
     paste0(flux_name, "_diurnal.png"))
-  ggsave(p, file = fname)
+  ggsave(p, file = fname, type="cairo")
 
   return(p)
 }
@@ -523,7 +543,9 @@ plot_flux_vs_xvar <- function(dt_flux, flux_name = "f_co2",
 
   fname <- here("output", site_id, expt_id,
     paste0(flux_name, "_vs_", xvar_name, ".png"))
-  ggsave(p, file = fname)
+  ggsave(p, file = fname, type="cairo")
 
   return(p)
 }
+
+'%!in%' <- function(x,y)!('%in%'(x,y))
