@@ -186,9 +186,9 @@ get_soilmet_data <- function(v_fnames) {
     c("TA",        "PPFD_IN", "PPFD_IN_ch"))
 
   # If any column contains only NAs, it gets logical type and crashes melt
-  # by trying to combine logical and numeric types in one column. 
+  # by trying to combine logical and numeric types in one column.
   # If any column contains only 0s, it gets integer type; melt gives a warning
-  # about combining integer and numeric types in one column. 
+  # about combining integer and numeric types in one column.
   # So, convert any logicals or integers to numeric.
   v_logical <- sapply(dt, is.logical)
   v_integer <- sapply(dt, is.integer)
@@ -275,12 +275,12 @@ get_data <- function(v_dates, this_site_id = "HRG",
     dt <- dt[n_filt > 100 & n_filt < 1800]
     # skip if no data left after filtering
     if (nrow(dt) == 0) next
-    
+
     # save to file and list
     if (dryrun) {
       fname <- paste0(pname_csv_unfilt, "/dt_chi_", lubridate::date(this_date), ".csv")
-      p <- plot_data_unfiltered(dt, 
-        initial_deadband_width = initial_deadband_width, 
+      p <- plot_data_unfiltered(dt,
+        initial_deadband_width = initial_deadband_width,
         final_deadband_width = final_deadband_width, this_seq_id = 4)
     } else {
       fname <- paste0(pname_csv, "/dt_chi_", lubridate::date(this_date), ".csv")
@@ -291,16 +291,16 @@ get_data <- function(v_dates, this_site_id = "HRG",
     if (save_plots) {
       p <- plot_chi(dt, gas_name = "chi_h2o")
       fname <- paste0(pname_png, "/h2o_", lubridate::date(this_date), ".png")
-      ggsave(p, file = fname, type="cairo")
+      ggsave(p, file = fname, type = "cairo")
       p <- plot_chi(dt, gas_name = "chi_co2")
       fname <- paste0(pname_png, "/co2_", lubridate::date(this_date), ".png")
-      ggsave(p, file = fname, type="cairo")
+      ggsave(p, file = fname, type = "cairo")
       p <- plot_chi(dt, gas_name = "chi_ch4")
       fname <- paste0(pname_png, "/ch4_", lubridate::date(this_date), ".png")
-      ggsave(p, file = fname, type="cairo")
+      ggsave(p, file = fname, type = "cairo")
       p <- plot_chi(dt, gas_name = "chi_n2o")
       fname <- paste0(pname_png, "/n2o_", lubridate::date(this_date), ".png")
-      ggsave(p, file = fname, type="cairo")
+      ggsave(p, file = fname, type = "cairo")
     }
     # calculate fluxes each day
     dt <- calc_flux(dt, gas_name = "chi_h2o")
@@ -371,10 +371,10 @@ remove_deadband <- function(dt, initial_deadband_width = 150, final_deadband_wid
 plot_data_unfiltered <- function(dt_unfilt, initial_deadband_width = 150,
                                  final_deadband_width = 150, this_seq_id = 1) {
   # if the requested seq_id is not available, set to first value in list
-  if (this_seq_id %!in% dt_unfilt$seq_id) this_seq_id <- 
+  if (this_seq_id %!in% dt_unfilt$seq_id) this_seq_id <-
     unique(dt_unfilt$seq_id)[1]
   dt1 <- dt_unfilt[this_seq_id == seq_id]
-  dt_sfdband <- dt1[, .(start_final_deadband = .SD[1, start_final_deadband]), 
+  dt_sfdband <- dt1[, .(start_final_deadband = .SD[1, start_final_deadband]),
     by = mmnt_id]
 
   p <- ggplot(dt1, aes(t, chi_co2, colour = exclude))
@@ -382,12 +382,12 @@ plot_data_unfiltered <- function(dt_unfilt, initial_deadband_width = 150,
   p <- p + facet_wrap(~mmnt_id) + xlim(0, NA)
   p <- p + geom_vline(xintercept = initial_deadband_width)
   p <- p + geom_vline(data = dt_sfdband, aes(xintercept = start_final_deadband))
-  
+
   fname <- here("output", dt1$site_id[1], dt1$expt_id[1], "png", "unfilt",
-    paste0("chi_co2_", as.character(lubridate::date(dt1$datect[1])), 
-    "_", this_seq_id, ".png"))
-  ggsave(p, file = fname, type="cairo")
-  
+    paste0("chi_co2_", as.character(lubridate::date(dt1$datect[1])),
+      "_", this_seq_id, ".png"))
+  ggsave(p, file = fname, type = "cairo")
+
   return(p)
 }
 
@@ -452,7 +452,7 @@ plot_flux <- function(dt_flux, flux_name = "f_N2O_dry",
 
   fname <- here("output", site_id, expt_id,
     paste0(flux_name, ".png"))
-  ggsave(p, file = fname, type="cairo")
+  ggsave(p, file = fname, type = "cairo")
 
   return(p)
 }
@@ -487,7 +487,7 @@ plot_n2o_flux <- function(dt_flux, flux_name = "f_N2O_dry",
 
   fname <- here("output", site_id, expt_id,
     paste0(flux_name, "_with_Nappl.png"))
-  ggsave(p, file = fname, type="cairo")
+  ggsave(p, file = fname, type = "cairo")
 
   return(p)
 }
@@ -515,7 +515,7 @@ plot_n2o_flux_diurnal <- function(dt_flux, flux_name = "f_N2O_dry",
 
   fname <- here("output", site_id, expt_id,
     paste0(flux_name, "_diurnal.png"))
-  ggsave(p, file = fname, type="cairo")
+  ggsave(p, file = fname, type = "cairo")
 
   return(p)
 }
@@ -543,9 +543,9 @@ plot_flux_vs_xvar <- function(dt_flux, flux_name = "f_co2",
 
   fname <- here("output", site_id, expt_id,
     paste0(flux_name, "_vs_", xvar_name, ".png"))
-  ggsave(p, file = fname, type="cairo")
+  ggsave(p, file = fname, type = "cairo")
 
   return(p)
 }
 
-'%!in%' <- function(x,y)!('%in%'(x,y))
+"%!in%" <- function(x, y) !("%in%"(x, y))

@@ -125,7 +125,7 @@ path <- find.package(pack)
 system(paste(shQuote(file.path(R.home("bin"), "R")),"CMD", "Rd2pdf", shQuote(path)))
 
 system.time(build(manual = TRUE, vignettes = FALSE))
-system.time(check())
+system.time(check(vignettes = FALSE))
 #build()
 #build(binary = TRUE)
 #check()
