@@ -1,89 +1,62 @@
-<!-- README.md is generated from README.Rmd. Please edit that file -->
-[![Travis-CI Build Status](https://travis-ci.org/cboettig/template.svg?branch=master)](https://travis-ci.org/cboettig/template) [![Coverage Status](https://coveralls.io/repos/cboettig/template/badge.svg)](https://coveralls.io/r/cboettig/template)
+---
+title: 'Data processing, analysis and uncertainty quantification for chamber measurements of CO$_2$, N$_2$O and CH$_4$ fluxes'
+author: 
+- Peter Levy
+date: Centre for Ecology and Hydrology, Bush Estate, Penicuik, EH26 0QB, U.K.
+output:
+  html_document: 
+    toc: no
+    keep_md: yes
+---
 
-This repository provides the current template I use for new research projects.
 
-Why an R package structure?
----------------------------
 
-Academic research isn't software development, and there are many other templates for how to organize a research project. So why follow an R package layout? Simply put, this is because the layout of an R package is familiar to a larger audience and allows me to leverage a rich array of tools that don't exist for more custom approaches.
 
-"But"", you say, "a paper doesn't have unit tests, or documented functions! Surely that's a lot of needless overhead in doing this!?"
+Analysis of skyline data
 
-Exactly...
+### Installation
+The package can be installed directly from a bundled .tar.gz file or directly from GitHub, using `install_github` from remotes.
 
-While there is certainly no need to use all the elements of a package in every research project, or even to have a package that can pass `devtools::check()` or even `devtools::install()` for it to be useful. Most generic layout advice starts sounding like an R package pretty quickly: have a directory for `data/`, a separate one for `R/` scripts, another one for the manuscript files, and so forth. [Temple Lang and Gentleman (2007)]( "http://doi.org/10.1198/106186007X178663") advance the proposal for using the R package structure as a "Research Compendium," an idea that has since caught on with many others.
 
-As a project grows in size and collaboration, having the more rigid structure offered by a package format becomes increasingly valuable. Packages can automate installation of dependencies, perform checks that changes have not broken code, and provide a modular and highly tested framework for collecting together the three essential elements: data, code, and manuscript-quality documentation, in a powerful and feature-rich environment.
+```r
+# If not already installed:
+# install.packages(c("remotes"))
+library(remotes)  # for install_github
 
-Steps to create the template
-----------------------------
-
-To use this template, I will usually clone this repo and just remove the `.git` record, starting off a new project accordingly. Here I document the steps used to set up this template from scratch, which permits a slightly more modular approach. If this were fully automated it would be preferable to copying, but has not yet reached that stage.
-
-The template can be initialized with functions from devtools:
-
-``` r
-devtools::install_github("hadley/devtools")
-library("devtools")
+# install skyline from github
+install_github("NERC-CEH/skyline")
 ```
 
-Configure some default options for `devtools`, see `package?devtools`:
+And if it installs successfully:
 
-``` r
-options(devtools.name = "Carl Boettiger", 
-        devtools.desc.author = "person('Carl', 'Boettiger', email='cboettig@gmail.com', role = c('aut', 'cre'))",
-        devtools.desc.license = "MIT + file LICENSE")
+
+```r
+library(skyline)
+# Check version installed
+packageVersion("skyline")
+
+# check the help:
+?skyline
+# currently the only properly documented function:
+?read_cs_data
 ```
 
-Run devtools templating tools
+The code uses the workflow management package [targets](https://books.ropensci.org/targets/) 
+to ensure reproducibility, and some understanding of that helps, but is not essential .
+To run it for an experiment, you need to configure the settings in the 
+`_targets.R` file and run the code in `run.R`.  This  looks like:
 
-``` r
-setup()
-use_testthat()
-use_vignette("intro")
-use_travis()
-use_package_doc()
-use_cran_comments()
-use_readme_rmd()
+
+```r
+here::i_am("./run.R")
+library(targets)
+tar_outdated()
+system.time(tar_make())
 ```
 
-Additional modifications and things not yet automated by `devtools`:
 
--   Add the now-required LICENSE template data
--   add `covr` to the suggests list
+### References
+Some background on the uncertainty propagation is in here:
 
-``` r
-writeLines(paste("YEAR: ", format(Sys.Date(), "%Y"), "\n", 
-                 "COPYRIGHT HOLDER: ", getOption("devtools.name"), sep=""),
-           con="LICENSE")
+Levy, P.E., Gray, A., Leeson, S.R., Gaiawyn, J., Kelly, M.P.C., Cooper, M.D.A., Dinsmore, K.J., Jones, S.K., Sheppard, L.J., 2011. Quantification of uncertainty in trace gas fluxes measured by the static chamber method. European Journal of Soil Science 62, 811–821. https://doi.org/10.1111/j.1365-2389.2011.01403.x
 
-use_package("covr", "suggests")
-
-write(
-"
-r_binary_packages:
-  - testthat
-  - knitr
-
-r_github_packages:
-  - jimhester/covr
-
-after_success:
-  - Rscript -e 'library(covr); coveralls()'",
-file=".travis.yml", append=TRUE)
-```
-
-### Further steps that aren't automated
-
-Further steps aren't yet automated in devtools or by me; as it's easier to add these manually to the template and then use the template when starting a new project.
-
--   add the travis shield to README, (as prompted to do by `add_travis()`)
--   Turn on repo at coveralls.io and add the shield to README
--   adding additional dependencies to DESCRIPTION with `use_package`, and also add to `.travis.yml` manually, e.g. under `r_binary_packages:`, `r_github_packages`, or `r_packages`
--   add additional data with `use_data()` or possibly `use_raw_data()` (for scripts that import and clean data first)
-
-Manuscript elements
--------------------
-
--   Recent developments in `rmarkdown`, `knitr` and `rticles` packages greatly faciliates using vignettes as full manuscripts. The above step adds only a basic HTML templated vignette. This package includes a template for a latex/pdf manuscript using these tools. The actual template appropriate for a project may be better selected from (possibly my fork of) the `rticles` templates.
