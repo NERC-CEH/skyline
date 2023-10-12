@@ -166,9 +166,11 @@ get_ch_position_data <- function(v_fnames, chpos_multiplier) {
   dt[, datect := as.POSIXct(round(datect, "secs"))]
   dt <- dt[, lapply(.SD, mean), .SDcols = c("C_Voltage"),  by = datect]
   # convert chamber position voltage to chamber ID
-  dt[, chamber_id := as.factor(round(C_Voltage * chpos_multiplier, 0))]
+  dt[, chamber_id := round(C_Voltage * chpos_multiplier, 0)]
   # residual measures how far we are from expected mV
-  dt[, C_mV_residual := abs(C_Voltage - (as.numeric(chamber_id) / chpos_multiplier))]
+  dt[, C_mV_residual := abs(C_Voltage - (chamber_id / chpos_multiplier))]
+  # do we need this as a factor?
+  dt[, chamber_id := as.factor(chamber_id)]
   return(dt)
 }
 
@@ -209,9 +211,8 @@ get_soilmet_data <- function(v_fnames) {
   return(dt)
 }
 
-get_data <- function(v_dates, this_site_id = "HRG",
+get_data <- function(v_dates = NULL, this_site_id = "HRG",
                      this_expt_id = "diurnal1", data_location, l_meta,
-                     # initial_deadband_width = 150, final_deadband_width = 150,
                      seq_id_to_plot = 4,
                      method = "time fit", dryrun = FALSE,
                      save_plots = TRUE, write_all = FALSE) {
@@ -228,6 +229,13 @@ get_data <- function(v_dates, this_site_id = "HRG",
 
   # subset metadata to site, experiment and data_location
   dt_expt <- l_meta$dt_expt[this_site_id == site_id & this_expt_id == expt_id][1]
+
+  # if not provided, use experiment start & end dates from metadata
+  if (is.null(v_dates)) {
+    start_date <- as.POSIXct(dt_expt$start_date)
+    end_date   <- as.POSIXct(dt_expt$end_date)
+    v_dates <- seq(from = start_date, to = end_date, by="day")
+  }
 
   n_days <- length(v_dates)
   l_dt_chi  <- list()
@@ -398,7 +406,7 @@ plot_data_unfiltered <- function(dt_unfilt, initial_deadband_width = 150,
   p <- ggplot(dt1, aes(t, chi_co2, colour = exclude))
   p <- p + geom_point(aes(size = t_resid))
   p <- p + geom_point()
-  p <- p + facet_wrap(~mmnt_id) + xlim(0, NA)
+  p <- p + facet_wrap(~ mmnt_id) + xlim(0, NA)
   p <- p + geom_vline(xintercept = initial_deadband_width)
   p <- p + geom_vline(data = dt_sfdband, aes(xintercept = start_final_deadband))
 
@@ -414,7 +422,7 @@ plot_chi <- function(dt, gas_name = "chi_n2o") {
   p <- ggplot(dt, aes(t, get(gas_name), colour = as.factor(seq_id), group = mmnt_id))
   p <- p + geom_point(alpha = 0.1) ## WIP setting alpha adds computation time - try without
   p <- p + xlim(0, NA) + ylab(gas_name)
-  p <- p + facet_wrap(~chamber_id)
+  p <- p + facet_wrap(~ chamber_id)
   return(p)
 }
 

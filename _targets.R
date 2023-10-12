@@ -19,15 +19,17 @@ data_location <- "local drive"
 # site, experiment, and dates to process:
 site_id <- "EHD"
 expt_id <- "yield1"
-start_date <- "2019-05-02" # "2023-04-01" # "2023-03-16" 
-end_date   <- "2019-05-04" # "2023-04-04" # "2023-08-12" 
-seq_id_to_plot <- 4
+seq_id_to_plot <- 6
 
-example_date   <- as.POSIXct(start_date)
-v_dates <- as.POSIXct(seq(from = as.Date(start_date), to = as.Date(end_date), by="day"))
+# default to process all dates in experiment
+v_dates <- NULL
+# or uncomment lines below to specify a subset of dates
+# start_date <- "2019-05-02" # "2023-04-01" # "2023-03-16" 
+# end_date   <- "2019-05-04" # "2023-04-04" # "2023-08-12" 
+# v_dates <- as.POSIXct(seq(from = as.Date(start_date), to = as.Date(end_date), by="day"))
 save_plots <- FALSE
 
-# Replace the target list below with your own:
+# list of targets:
 list(
   tar_target(fname_meta, "data-raw/skyline_meta-data.xlsx", format = "file"),
   tar_target(
@@ -40,38 +42,25 @@ list(
       seq_id_to_plot = seq_id_to_plot,
       method = "time fit", dryrun = TRUE, save_plots = save_plots)
   ),
-  # tar_target(
-    # name = l_out_example,
-    # command = get_data(example_date, site_id, expt_id, data_location, l_meta, 
-      # initial_deadband_width = initial_deadband_width, 
-      # final_deadband_width = final_deadband_width,
-      # method = "time fit", dryrun = TRUE, save_plots = save_plots)
-  # ),
-  # tar_target(
-    # name = dt_unfilt,
-    # command = remove_deadband(l_out_example$dt_chi, 
-      # initial_deadband_width = initial_deadband_width, 
-      # final_deadband_width = final_deadband_width,
-      # method = "time fit", dryrun = TRUE)
-  # ),
-  # tar_target(
-    # name = p_unfilt,
-    # command = plot_data_unfiltered(dt_unfilt, 
-      # initial_deadband_width = initial_deadband_width, 
-      # final_deadband_width = final_deadband_width, seq_id_to_plot = 4)
-  # ),
+  
+  # take the first day as an example to plot
+  tar_target(
+    name = example_date,
+    command = l_out$dt_chi[1, as.POSIXct(lubridate::date(datect))]
+  ),
+  # plot concentration against time for every mmnt sequence that day      
   tar_target(
     name = p_chi_co2,
     command = plot_chi(l_out$dt_chi[
       example_date == as.POSIXct(lubridate::date(datect))], 
       gas_name = "chi_co2")
   ),
-  # tar_target(
-    # name = p_chi_ch4,
-    # command = plot_chi(l_out$dt_chi[
-      # example_date == as.POSIXct(lubridate::date(datect))], 
-      # gas_name = "chi_ch4")
-  # ),
+  tar_target(
+    name = p_chi_ch4,
+    command = plot_chi(l_out$dt_chi[
+      example_date == as.POSIXct(lubridate::date(datect))], 
+      gas_name = "chi_ch4")
+  ),
   tar_target(
     name = p_chi_h2o,
     command = plot_chi(l_out$dt_chi[
@@ -84,6 +73,7 @@ list(
       example_date == as.POSIXct(lubridate::date(datect))], 
       gas_name = "chi_n2o")
   ) # ,
+
   # # post-processing - separate script or give prefix?
   # tar_target(
     # name = dt_flux,
