@@ -17,12 +17,11 @@ data.table::getDTthreads()
 
 data_location <- "local drive"
 # site, experiment, and dates to process:
-site_id <- "HRG"
-expt_id <- "diurnal1"
-start_date <- "2023-07-01" # "2023-05-04"
-end_date   <- "2023-07-04" # "2023-09-15"
-initial_deadband_width <- 75
-final_deadband_width   <- 20
+site_id <- "EHD"
+expt_id <- "yield1"
+start_date <- "2019-05-02" # "2023-04-01" # "2023-03-16" 
+end_date   <- "2019-05-04" # "2023-04-04" # "2023-08-12" 
+seq_id_to_plot <- 4
 
 example_date   <- as.POSIXct(start_date)
 v_dates <- as.POSIXct(seq(from = as.Date(start_date), to = as.Date(end_date), by="day"))
@@ -38,8 +37,7 @@ list(
   tar_target(
     name = l_out,
     command = get_data(v_dates, site_id, expt_id, data_location, l_meta,
-      initial_deadband_width = initial_deadband_width, 
-      final_deadband_width = final_deadband_width,
+      seq_id_to_plot = seq_id_to_plot,
       method = "time fit", dryrun = TRUE, save_plots = save_plots)
   ),
   # tar_target(
@@ -60,7 +58,7 @@ list(
     # name = p_unfilt,
     # command = plot_data_unfiltered(dt_unfilt, 
       # initial_deadband_width = initial_deadband_width, 
-      # final_deadband_width = final_deadband_width, this_seq_id = 4)
+      # final_deadband_width = final_deadband_width, seq_id_to_plot = 4)
   # ),
   tar_target(
     name = p_chi_co2,

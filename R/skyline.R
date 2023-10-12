@@ -145,7 +145,7 @@ get_ghg_data <- function(v_fnames, this_date, this_site_id, this_expt_id, l_meta
   return(dt_ghg)
 }
 
-get_ch_position_data <- function(v_fnames) {
+get_ch_position_data <- function(v_fnames, chpos_multiplier) {
 
   if (fs::path_ext(v_fnames[1]) == "csv") l_dt <- lapply(v_fnames, fread)
   if (fs::path_ext(v_fnames[1]) == "dat") l_dt <- lapply(v_fnames, read_cs_data)
@@ -166,7 +166,9 @@ get_ch_position_data <- function(v_fnames) {
   dt[, datect := as.POSIXct(round(datect, "secs"))]
   dt <- dt[, lapply(.SD, mean), .SDcols = c("C_Voltage"),  by = datect]
   # convert chamber position voltage to chamber ID
-  dt[, chamber_id := as.factor(round(C_Voltage * 0.01, 0))]
+  dt[, chamber_id := as.factor(round(C_Voltage * chpos_multiplier, 0))]
+  # residual measures how far we are from expected mV
+  dt[, C_mV_residual := abs(C_Voltage - (as.numeric(chamber_id) / chpos_multiplier))]
   return(dt)
 }
 
@@ -209,7 +211,8 @@ get_soilmet_data <- function(v_fnames) {
 
 get_data <- function(v_dates, this_site_id = "HRG",
                      this_expt_id = "diurnal1", data_location, l_meta,
-                     initial_deadband_width = 150, final_deadband_width = 150,
+                     # initial_deadband_width = 150, final_deadband_width = 150,
+                     seq_id_to_plot = 4,
                      method = "time fit", dryrun = FALSE,
                      save_plots = TRUE, write_all = FALSE) {
   # create directories for output
@@ -223,6 +226,8 @@ get_data <- function(v_dates, this_site_id = "HRG",
   fs::dir_create(pname_csv_unfilt)
   fs::dir_create(pname_png_unfilt)
 
+  # subset metadata to site, experiment and data_location
+  dt_expt <- l_meta$dt_expt[this_site_id == site_id & this_expt_id == expt_id][1]
 
   n_days <- length(v_dates)
   l_dt_chi  <- list()
@@ -236,7 +241,7 @@ get_data <- function(v_dates, this_site_id = "HRG",
 
     dt_ghg <- get_ghg_data(l_files$v_fnames_ghg, this_date,
       this_site_id, this_expt_id, l_meta)
-    dt_pos <- get_ch_position_data(l_files$v_fnames_pos)
+    dt_pos <- get_ch_position_data(l_files$v_fnames_pos, dt_expt$chpos_multiplier)
     dt_met <- get_soilmet_data(l_files$v_fnames_met)
 
     dt <- dt_pos[dt_ghg, on = .(datect = datect), roll = TRUE]
@@ -248,10 +253,16 @@ get_data <- function(v_dates, this_site_id = "HRG",
     dt[, seq_id  := rleid(chamber_id)] # enumerate the sequence
     # then enumerate the sequence for a given chamber
     dt[, seq_id := rleid(seq_id), by = chamber_id]
-    dt[, mmnt_id := paste(lubridate::date(dt$datect), chamber_id, seq_id, sep = "_")]
+    dt[, mmnt_id := paste(lubridate::date(dt$datect),
+      formatC(chamber_id, width = 2, format = "d", flag = "0"),
+      formatC(seq_id, width = 2, format = "d", flag = "0"),
+      sep = "_")]
 
     # enumerate the records within a mmnt sequence
     dt[, t := seq_len(.N), by = mmnt_id]
+    # remove records beyond the maximum mmnt length
+    dt <- dt[t < dt_expt$t_max]
+
     dt[, n := .N, by = mmnt_id]
     dt <- dt[!is.na(chi_h2o)] # subset to valid ghg data only
 
@@ -265,13 +276,15 @@ get_data <- function(v_dates, this_site_id = "HRG",
     if (length(unique(dt$chamber_id)) < 2) next
     # remove deadband and plot
     dt <- remove_deadband(dt,
-      initial_deadband_width = initial_deadband_width,
-      final_deadband_width = final_deadband_width,
+      initial_deadband_width = dt_expt$initial_deadband_width,
+      final_deadband_width   = dt_expt$final_deadband_width,
+      chpos_tolerance_mV = dt_expt$chpos_tolerance_mV,
+      t_resid_threshold = dt_expt$t_resid_threshold,
       method = method, dryrun = dryrun)
     # re-check how many data are left
     dt[, n_filt := .N, by = mmnt_id]
     # if too few data left (100?), or too many (ch position sensor stuck)
-    # remove the whole measurement sequence
+    # then remove the whole measurement sequence
     dt <- dt[n_filt > 100 & n_filt < 1800]
     # skip if no data left after filtering
     if (nrow(dt) == 0) next
@@ -280,8 +293,8 @@ get_data <- function(v_dates, this_site_id = "HRG",
     if (dryrun) {
       fname <- paste0(pname_csv_unfilt, "/dt_chi_", lubridate::date(this_date), ".csv")
       p <- plot_data_unfiltered(dt,
-        initial_deadband_width = initial_deadband_width,
-        final_deadband_width = final_deadband_width, this_seq_id = 4)
+        initial_deadband_width = dt_expt$initial_deadband_width,
+        final_deadband_width   = dt_expt$final_deadband_width, seq_id_to_plot = seq_id_to_plot)
     } else {
       fname <- paste0(pname_csv, "/dt_chi_", lubridate::date(this_date), ".csv")
     }
@@ -335,8 +348,10 @@ get_data <- function(v_dates, this_site_id = "HRG",
 }
 
 remove_deadband <- function(dt, initial_deadband_width = 150, final_deadband_width = 150,
+                            chpos_tolerance_mV = 6, t_resid_threshold = 1,
                             method = c("time fit", "specified deadband only"), dryrun = FALSE) {
   dt[, exclude := FALSE]
+  dt[C_mV_residual > chpos_tolerance_mV, exclude := TRUE]
   # add mmnt-specific latter deadband
   dt[, start_final_deadband := n - final_deadband_width, by = mmnt_id]
 
@@ -349,7 +364,7 @@ remove_deadband <- function(dt, initial_deadband_width = 150, final_deadband_wid
     # predict time based on all GHG concentrations, weighted towards the middle
     # and use this to filter out the nonlinear part
     if (length(unique(dt$mmnt_id)) > 1) {
-      form <- formula(t ~ chi_co2 + chi_ch4 + chi_n2o + chi_h2o)
+      form <- formula(t ~ chi_co2 + chi_ch4 + chi_n2o + chi_h2o + C_Voltage)
       # very slow on JASMIN:
       # m <- lm(t ~ chi_co2 + chi_ch4 + chi_n2o + chi_h2o + mmnt_id, w = w, data = dt) # nolint
       dt[, t_pred := predict(lm(form, w = w, data = .SD)), by = mmnt_id]
@@ -358,10 +373,13 @@ remove_deadband <- function(dt, initial_deadband_width = 150, final_deadband_wid
       dt[, t_pred := predict(lm(form, w = w, data = .SD))]
       dt[, t_resid := abs(scale(resid(lm(form, w = w, data = .SD))))]
     }
-    dt[t / n > 0.25 & t / n < 0.75, t_resid := 0]
-    # set the exclusion criteria
-    dt[t < initial_deadband_width | t > start_final_deadband |
-      t_resid > 1, exclude := TRUE]
+    # Leave middle half of the data untouched - not deadband.
+    # In the first and last quarters, exclude if residual is too high.
+    dt[(t / n <= 0.25 | t / n >= 0.75) &
+      t_resid > t_resid_threshold, exclude := TRUE]
+    # exclude the pre-defined deadband
+    dt[t < initial_deadband_width | t > start_final_deadband,
+      exclude := TRUE]
   }
   # unless it is a dryrun, subset the data
   if (!dryrun) dt <- dt[exclude == FALSE]
@@ -369,30 +387,30 @@ remove_deadband <- function(dt, initial_deadband_width = 150, final_deadband_wid
 }
 
 plot_data_unfiltered <- function(dt_unfilt, initial_deadband_width = 150,
-                                 final_deadband_width = 150, this_seq_id = 1) {
+                                 final_deadband_width = 150, seq_id_to_plot = 1) {
   # if the requested seq_id is not available, set to first value in list
-  if (this_seq_id %!in% dt_unfilt$seq_id) this_seq_id <-
+  if (seq_id_to_plot %!in% dt_unfilt$seq_id) seq_id_to_plot <-
     unique(dt_unfilt$seq_id)[1]
-  dt1 <- dt_unfilt[this_seq_id == seq_id]
+  dt1 <- dt_unfilt[seq_id_to_plot == seq_id]
   dt_sfdband <- dt1[, .(start_final_deadband = .SD[1, start_final_deadband]),
     by = mmnt_id]
 
   p <- ggplot(dt1, aes(t, chi_co2, colour = exclude))
   p <- p + geom_point(aes(size = t_resid))
+  p <- p + geom_point()
   p <- p + facet_wrap(~mmnt_id) + xlim(0, NA)
   p <- p + geom_vline(xintercept = initial_deadband_width)
   p <- p + geom_vline(data = dt_sfdband, aes(xintercept = start_final_deadband))
 
   fname <- here("output", dt1$site_id[1], dt1$expt_id[1], "png", "unfilt",
     paste0("chi_co2_", as.character(lubridate::date(dt1$datect[1])),
-      "_", this_seq_id, ".png"))
+      "_", seq_id_to_plot, ".png"))
   ggsave(p, file = fname, type = "cairo")
 
   return(p)
 }
 
-plot_chi <- function(dt, gas_name = "chi_n2o",
-                     initial_deadband_width = 150, final_deadband_width = 150) {
+plot_chi <- function(dt, gas_name = "chi_n2o") {
   p <- ggplot(dt, aes(t, get(gas_name), colour = as.factor(seq_id), group = mmnt_id))
   p <- p + geom_point(alpha = 0.1) ## WIP setting alpha adds computation time - try without
   p <- p + xlim(0, NA) + ylab(gas_name)
