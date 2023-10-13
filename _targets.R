@@ -1,8 +1,11 @@
 library(targets)
+library(here)
+library(qs)
 Sys.setenv(TZ = "GMT")
 
 # Set target options:
-v_pkgs = c("here", "fs", "data.table", "readxl", "units", "qs", "ggplot2")
+v_pkgs = c("here", "fs", "data.table", "readxl", "units", "qs", "ggplot2", 
+  "lubridate")
 tar_option_set(
   # envir = getNamespace("skyline"), use source code from installed package
   packages = v_pkgs,

@@ -9,7 +9,8 @@ tar_source()
 tar_outdated()
 
 # for debugging
-v_pkgs = c("here", "fs", "data.table", "readxl", "units", "qs", "ggplot2")
+v_pkgs = c("here", "fs", "data.table", "readxl", "units", "qs", "ggplot2", 
+  "lubridate")
 lapply(v_pkgs, require, character.only = TRUE)
 data_location <- "local drive"
 
@@ -24,8 +25,8 @@ final_deadband_width   <- 20
 # site, experiment, and dates to process:
 site_id <- "EHD"
 expt_id <- "digestate1"
-start_date <- "2023-06-28" # "2023-04-01" # "2023-03-16" 
-end_date   <- "2023-06-28" # "2023-04-04" # "2023-08-12" 
+start_date <- "2023-04-01" # "2023-03-16" 
+end_date   <- "2023-04-04" # "2023-08-12" 
 initial_deadband_width <- 150
 final_deadband_width   <- 150
 
@@ -69,12 +70,8 @@ length(l_files$v_fnames_pos)
 length(l_files$v_fnames_met)
 
 dt_ghg <- get_data(this_date, site_id, expt_id, data_location, l_meta,
-      initial_deadband_width = initial_deadband_width, 
-      final_deadband_width = final_deadband_width,
       method = "time fit", dryrun = FALSE, save_plots = save_plots)
 l_out <- get_data(v_dates, site_id, expt_id, data_location, l_meta,
-      initial_deadband_width = initial_deadband_width, 
-      final_deadband_width = final_deadband_width,
       method = "time fit", dryrun = TRUE, save_plots = save_plots)
       
 dt_unfilt <- remove_deadband(dt_ghg, method = "time fit", dryrun = TRUE)

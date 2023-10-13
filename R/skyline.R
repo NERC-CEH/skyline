@@ -136,7 +136,7 @@ get_ghg_data <- function(v_fnames, this_date, this_site_id, this_expt_id, l_meta
     ## TODO: set instrument-specific units here too
   }
 
-  dt_ghg[, datect := as.POSIXct(round(datect, "secs"))]
+  dt_ghg[, datect_tmp := lubridate::round_date(datect, "secs")]
   # aggregate to 1 Hz i.e. do 1-sec averaging
   dt_ghg <- dt_ghg[, lapply(.SD, mean), .SDcols = v_names, by = datect]
 
@@ -163,7 +163,7 @@ get_ch_position_data <- function(v_fnames, chpos_multiplier) {
 
   # strip out excess columns and aggregate to 1 Hz (latter prob not needed
   # as 1 Hz anyway (but is it always?)
-  dt[, datect := as.POSIXct(round(datect, "secs"))]
+  dt[, datect := lubridate::round_date(datect, "secs")]
   dt <- dt[, lapply(.SD, mean), .SDcols = c("C_Voltage"),  by = datect]
   # convert chamber position voltage to chamber ID
   dt[, chamber_id := round(C_Voltage * chpos_multiplier, 0)]
@@ -184,7 +184,7 @@ get_soilmet_data <- function(v_fnames) {
   if ("DateTime"  %in% names(dt)) dt[, datect := as.POSIXct(DateTime)]
   if ("TIMESTAMP" %in% names(dt)) dt[, datect := as.POSIXct(TIMESTAMP)]
 
-  dt[, datect := as.POSIXct(round(datect, "mins"))]
+  dt[, datect := lubridate::round_date(datect, "mins")]
   dt[, RECORD := NULL]
   setnames(dt, c("C_Temp_C_Avg", "QR_Avg", "QR_C_Avg"),
     c("TA",        "PPFD_IN", "PPFD_IN_ch"))
