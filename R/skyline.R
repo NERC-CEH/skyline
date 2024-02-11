@@ -351,7 +351,13 @@ get_data <- function(v_dates = NULL, this_site_id = "HRG",
     # save to file and list
     if (dryrun) {
       fname <- paste0(pname_csv_unfilt, "/dt_chi_", lubridate::date(this_date), ".csv")
-      p <- plot_data_unfiltered(dt, # plots all the data including deadbands
+      p <- plot_data_unfiltered(dt, gas_name = "chi_co2",
+        initial_deadband_width = dt_ddbd$initial_deadband_width,
+        final_deadband_width   = dt_ddbd$final_deadband_width, seq_id_to_plot = seq_id_to_plot)
+      p <- plot_data_unfiltered(dt, gas_name = "chi_ch4",
+        initial_deadband_width = dt_ddbd$initial_deadband_width,
+        final_deadband_width   = dt_ddbd$final_deadband_width, seq_id_to_plot = seq_id_to_plot)
+      p <- plot_data_unfiltered(dt, gas_name = "chi_n2o",
         initial_deadband_width = dt_ddbd$initial_deadband_width,
         final_deadband_width   = dt_ddbd$final_deadband_width, seq_id_to_plot = seq_id_to_plot)
       fwrite(dt, file = fname)
@@ -499,7 +505,8 @@ remove_deadband <- function(dt, initial_deadband_width = 150, final_deadband_wid
   return(dt)
 }
 
-plot_data_unfiltered <- function(dt_unfilt, initial_deadband_width = 150,
+plot_data_unfiltered <- function(dt_unfilt, gas_name = "chi_co2",
+                                 initial_deadband_width = 150,
                                  final_deadband_width = 150, seq_id_to_plot = 1) {
   # if the requested seq_id is not available, set to first value in list
   if (seq_id_to_plot %!in% dt_unfilt$seq_id) seq_id_to_plot <-
@@ -508,7 +515,7 @@ plot_data_unfiltered <- function(dt_unfilt, initial_deadband_width = 150,
   dt_sfdband <- dt1[, .(start_final_deadband = .SD[1, start_final_deadband]),
     by = mmnt_id]
 
-  p <- ggplot(dt1, aes(t, chi_co2, colour = exclude))
+  p <- ggplot(dt1, aes(t, get(gas_name), colour = exclude))
   p <- p + geom_point(aes(size = t_resid))
   p <- p + geom_point()
   p <- p + facet_wrap(~ mmnt_id) + xlim(0, NA)
@@ -516,10 +523,9 @@ plot_data_unfiltered <- function(dt_unfilt, initial_deadband_width = 150,
   p <- p + geom_vline(data = dt_sfdband, aes(xintercept = start_final_deadband))
 
   fname <- here("output", dt1$site_id[1], dt1$expt_id[1], "png", "unfilt",
-    paste0("chi_co2_", as.character(lubridate::date(dt1$datect[1])),
+    paste0(gas_name, "_", as.character(lubridate::date(dt1$datect[1])),
       "_", seq_id_to_plot, ".png"))
   ggsave(p, file = fname, type = "cairo")
-
   return(p)
 }
 
