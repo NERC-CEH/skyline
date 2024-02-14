@@ -1,11 +1,18 @@
 library(targets)
+library(tarchetypes)
 library(here)
 library(qs)
+# Uncomment the following code and use tar_make_future(workers = 5L) to make 
+# the targets in parallel sessions on the local machine.
+library(future)
+future::plan("multicore")
+
+# Always use GMT, never BST
 Sys.setenv(TZ = "GMT")
 
 # Set target options:
 v_pkgs = c("here", "fs", "data.table", "readxl", "units", "qs", "ggplot2",
-  "lubridate", "dplyr")
+  "lubridate", "dplyr", "future", "viridis", "lme4", "ggeffects")
 tar_option_set(
   # envir = getNamespace("skyline"), use source code from installed package
   packages = v_pkgs,
@@ -38,7 +45,7 @@ write_all <- TRUE   # combine files for days processes
 min_dp <- 100
 method <-  "time fit"  # "time fit" or "specified deadband only"
 # dryrun FALSE = remove deadbands and calculate fluxes, TRUE = plots showing deadbands for visual checking before calculating fluxes
-dryrun <- TRUE  
+dryrun <- FALSE  
 
 #### list of targets: ####
 list(
@@ -91,5 +98,251 @@ list(
       seq_id_to_plot = seq_id_to_plot,
       method = method, dryrun = dryrun, save_plots = save_plots, 
       write_all = write_all, min_dp = min_dp)
-  )
+  ),
+  
+  # take the mid-point day as an example to plot
+  tar_target(
+    name = example_date,
+    command = l_out_biochar1$dt_chi[floor(dim(l_out_biochar1$dt_chi)[1] / 2), 
+                as.POSIXct(lubridate::date(datect))]
+  ),
+  
+  # plot concentration against time for every mmnt sequence that day      
+  tar_target(
+    name = p_chi_co2_biochar1,
+    command = plot_chi(l_out_biochar1$dt_chi[
+      example_date == as.POSIXct(lubridate::date(datect))], 
+      gas_name = "chi_co2")
+  ),
+   
+  # post-processing - separate script or give prefix?
+  # currently, combine_fluxes not explicitly linked to l_out, just uses file paths
+  tar_target(
+    name = dt_flux_biochar1,
+    command = combine_fluxes(site_id = "EHD", expt_id = "biochar1")
+  ),
+  tar_target(
+    name = dt_flux_yield1,
+    command = combine_fluxes(site_id = "EHD", expt_id = "yield1")
+  ),
+  tar_target(
+    name = dt_flux_split1,
+    command = combine_fluxes(site_id = "EHD", expt_id = "split1")
+  ),
+  tar_target(
+    name = dt_flux_digestate1,
+    command = combine_fluxes(site_id = "EHD", expt_id = "digestate1")
+  ),
+  tar_target(
+    name = dt_flux_diurnal1,
+    command = combine_fluxes(site_id = "HRG", expt_id = "diurnal1")
+  ),
+  tar_target(
+    name = dt_flux_all,
+    command = rbindlist(list(dt_flux_biochar1, dt_flux_yield1, dt_flux_split1, 
+    dt_flux_digestate1, dt_flux_diurnal1),  fill=TRUE)
+  ),
+  
+  tar_target(
+    name = dt_flux,
+    command = filter_fluxes(dt_flux_all, save_file = TRUE, fname = "dt_flux")
+  ),
+  # tar_target(
+    # name = null_1,
+    # command = qsave(dt_flux, file = here("output/dt_flux.qs"))
+  # ),
+  tar_target(
+    name = dt,
+    command = finding_Nema(dt_flux, l_meta, save_file = TRUE)
+  ),
+
+  # biochar1
+  tar_target(
+    name = p_flux_co2_biochar1,
+    command = plot_flux_vs_xvar(dt_flux[expt_id == "biochar1"], flux_name = "f_co2", 
+                              sigma_name = "sigma_f_co2", xvar_name = "datect",
+                              colour_name = "chamber_id", facet_name = "trmt_id",
+                              colour_is_factor = TRUE, rows_only = TRUE, 
+                              mult = 1)
+  ),
+  tar_target(
+    name = p_flux_ch4_biochar1,
+    command = plot_flux(dt_flux_biochar1, flux_name = "f_ch4", 
+      sigma_name = "sigma_f_ch4", site_id = "EHD", expt_id = "biochar1", 
+      mult = 1000)
+  ),
+  tar_target(
+    name = p_flux_n2o_biochar1,
+    command = plot_flux_vs_xvar(dt_flux[expt_id == "biochar1"], 
+      flux_name = "f_n2o", sigma_name = "sigma_f_n2o", 
+      colour_name = "chamber_id", facet_name = "trmt_id",
+      mult = 1000)
+  ),
+  tar_target(
+    name = p_flux_n2o_with_Nappl_biochar1,
+    command = plot_n2o_flux(dt_flux_biochar1, flux_name = "f_n2o",
+      sigma_name = "sigma_f_n2o", this_site_id = "EHD", this_expt_id = "biochar1", 
+      l_meta, mult = 1000)
+  ),
+  tar_target(
+    name = p_flux_n2o_diurnal_biochar1,
+    command = plot_n2o_flux_diurnal(dt_flux_biochar1, flux_name = "f_n2o",
+      sigma_name = "sigma_f_n2o", this_site_id = "EHD", this_expt_id = "biochar1", 
+      mult = 1000, y_min = -2, y_max = 2.5)
+  ),
+  tar_target(
+    name = p_bar_n2o_biochar1,
+    command = bar_means_by_trmt(dt[expt_id == "biochar1"],
+      flux_name = "f_n2o", mult = 1000)
+  ),
+
+  # yield1
+  tar_target(
+    name = p_flux_co2_yield1,
+    command = plot_flux(dt_flux_yield1, flux_name = "f_co2", 
+      sigma_name = "sigma_f_co2", site_id = "EHD", expt_id = "yield1", 
+      mult = 1, y_min = -20, y_max = 25)
+  ),
+  tar_target(
+    name = p_flux_ch4_yield1,
+    command = plot_flux(dt_flux_yield1, flux_name = "f_ch4", 
+      sigma_name = "sigma_f_ch4", site_id = "EHD", expt_id = "yield1", 
+      mult = 1000, y_min = -20, y_max = 25)
+  ),
+  tar_target(
+    name = p_flux_n2o_yield1,
+    command = plot_flux(dt_flux_yield1, flux_name = "f_n2o", 
+      sigma_name = "sigma_f_n2o", site_id = "EHD", expt_id = "yield1", 
+      mult = 1000, y_min = -1, y_max = 5)
+  ),
+  tar_target(
+    name = p_flux_n2o_with_Nappl_yield1,
+    command = plot_n2o_flux(dt_flux_yield1, flux_name = "f_n2o",
+      sigma_name = "sigma_f_n2o", this_site_id = "EHD", this_expt_id = "yield1", 
+      l_meta, mult = 1000, y_min = -1, y_max = 5)
+  ),
+  tar_target(
+    name = p_flux_n2o_diurnal_yield1,
+    command = plot_n2o_flux_diurnal(dt_flux_yield1, flux_name = "f_n2o",
+      sigma_name = "sigma_f_n2o", this_site_id = "EHD", this_expt_id = "yield1", 
+      mult = 1000, y_min = -2, y_max = 2.5)
+  ),
+  tar_target(
+    name = p_bar_n2o_yield1,
+    command = bar_means_by_trmt(dt_flux[expt_id == "yield1"],
+      flux_name = "f_n2o", mult = 1000)
+  ),
+  
+  # split1
+  tar_target(
+    name = p_flux_co2_split1,
+    command = plot_flux(dt_flux_split1, flux_name = "f_co2", 
+      sigma_name = "sigma_f_co2", site_id = "EHD", expt_id = "split1", 
+      mult = 1, y_min = -20, y_max = 25)
+  ),
+  tar_target(
+    name = p_flux_ch4_split1,
+    command = plot_flux(dt_flux_split1, flux_name = "f_ch4", 
+      sigma_name = "sigma_f_ch4", site_id = "EHD", expt_id = "split1", 
+      mult = 1000, y_min = -20, y_max = 25)
+  ),
+  tar_target(
+    name = p_flux_n2o_split1,
+    command = plot_flux(dt_flux_split1, flux_name = "f_n2o", 
+      sigma_name = "sigma_f_n2o", site_id = "EHD", expt_id = "split1", 
+      mult = 1000, y_min = -1, y_max = 5)
+  ),
+  tar_target(
+    name = p_flux_n2o_with_Nappl_split1,
+    command = plot_n2o_flux(dt_flux_split1, flux_name = "f_n2o",
+      sigma_name = "sigma_f_n2o", this_site_id = "EHD", this_expt_id = "split1", 
+      l_meta, mult = 1000, y_min = -1, y_max = 5)
+  ),
+  tar_target(
+    name = p_flux_n2o_diurnal_split1,
+    command = plot_n2o_flux_diurnal(dt_flux_split1, flux_name = "f_n2o",
+      sigma_name = "sigma_f_n2o", this_site_id = "EHD", this_expt_id = "split1", 
+      mult = 1000, y_min = -2, y_max = 2.5)
+  ),
+  tar_target(
+    name = p_bar_n2o_split1,
+    command = bar_means_by_trmt(dt_flux[expt_id == "split1"],
+      flux_name = "f_n2o", mult = 1000)
+  ),
+  
+  # digestate1
+  tar_target(
+    name = p_flux_co2_digestate1,
+    command = plot_flux(dt_flux_digestate1, flux_name = "f_co2", 
+      sigma_name = "sigma_f_co2", site_id = "EHD", expt_id = "digestate1", 
+      mult = 1, y_min = -20, y_max = 25)
+  ),
+  tar_target(
+    name = p_flux_ch4_digestate1,
+    command = plot_flux(dt_flux_digestate1, flux_name = "f_ch4", 
+      sigma_name = "sigma_f_ch4", site_id = "EHD", expt_id = "digestate1", 
+      mult = 1000, y_min = -20, y_max = 25)
+  ),
+  tar_target(
+    name = p_flux_n2o_digestate1,
+    command = plot_flux(dt_flux_digestate1, flux_name = "f_n2o", 
+      sigma_name = "sigma_f_n2o", site_id = "EHD", expt_id = "digestate1", 
+      mult = 1000, y_min = -1, y_max = 5)
+  ),
+  tar_target(
+    name = p_flux_n2o_with_Nappl_digestate1,
+    command = plot_n2o_flux(dt_flux_digestate1, flux_name = "f_n2o",
+      sigma_name = "sigma_f_n2o", this_site_id = "EHD", this_expt_id = "digestate1", 
+      l_meta, mult = 1000, y_min = -1, y_max = 5)
+  ),
+  tar_target(
+    name = p_flux_n2o_diurnal_digestate1,
+    command = plot_n2o_flux_diurnal(dt_flux_digestate1, flux_name = "f_n2o",
+      sigma_name = "sigma_f_n2o", this_site_id = "EHD", this_expt_id = "digestate1", 
+      mult = 1000, y_min = -2, y_max = 2.5)
+  ),
+  tar_target(
+    name = p_bar_n2o_digestate1,
+    command = bar_means_by_trmt(dt_flux[expt_id == "digestate1"],
+      flux_name = "f_n2o", mult = 1000)
+  ),
+
+  # diurnal1
+  tar_target(
+    name = p_flux_co2_diurnal1,
+    command = plot_flux(dt_flux_diurnal1, flux_name = "f_co2", 
+      sigma_name = "sigma_f_co2", site_id = "HRG", expt_id = "diurnal1", 
+      mult = 1, y_min = -20, y_max = 25)
+  ),
+  tar_target(
+    name = p_flux_ch4_diurnal1,
+    command = plot_flux(dt_flux_diurnal1, flux_name = "f_ch4", 
+      sigma_name = "sigma_f_ch4", site_id = "HRG", expt_id = "diurnal1", 
+      mult = 1000, y_min = -20, y_max = 25)
+  ),
+  tar_target(
+    name = p_flux_n2o_diurnal1,
+    command = plot_flux(dt_flux_diurnal1, flux_name = "f_n2o", 
+      sigma_name = "sigma_f_n2o", site_id = "HRG", expt_id = "diurnal1", 
+      mult = 1000, y_min = -1, y_max = 5)
+  ),
+  tar_target(
+    name = p_flux_n2o_with_Nappl_diurnal1,
+    command = plot_n2o_flux(dt_flux_diurnal1, flux_name = "f_n2o",
+      sigma_name = "sigma_f_n2o", this_site_id = "HRG", this_expt_id = "diurnal1", 
+      l_meta, mult = 1000, y_min = -5, y_max = 20)
+  ),
+  tar_target(
+    name = p_flux_n2o_diurnal_diurnal1,
+    command = plot_n2o_flux_diurnal(dt_flux_diurnal1, flux_name = "f_n2o",
+      sigma_name = "sigma_f_n2o", this_site_id = "HRG", this_expt_id = "diurnal1", 
+      mult = 1000, y_min = -2, y_max = 2.5)
+  ),
+  tar_target(
+    name = p_bar_n2o_diurnal1,
+    command = bar_means_by_trmt(dt_flux[expt_id == "diurnal1"],
+      flux_name = "f_n2o", mult = 1000)
+  ),
+  # manuscript file:
+  tar_render(manuscript_pdf, here("manuscripts", "skyline_analysis.Rmd"))
 )

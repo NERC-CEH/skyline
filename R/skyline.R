@@ -1,5 +1,11 @@
 #' @import ggplot2
 
+# constants
+# define the conversion unit between g N and moles of N2O
+units::install_unit("mol_n2o", "28 g", "mol wt of N in N2O")
+units::install_unit(symbol = "ratio", def = "unitless",
+  name = "dimensionless ratio")
+
 #' @title read_cs_data
 #' @description Read CSI TOA5 data from a file.
 #'
@@ -380,9 +386,9 @@ get_data <- function(v_dates = NULL, this_site_id = "HRG",
         fname <- paste0(pname_png_unfilt_daily, "/n2o_", lubridate::date(this_date), ".png")
         ggsave(p, file = fname, type = "cairo")
       } else {
-          # p <- plot_chi(dt, gas_name = "chi_h2o")
-          # fname <- paste0(pname_png_daily, "/h2o_", lubridate::date(this_date), ".png")
-          # ggsave(p, file = fname, type = "cairo")
+          p <- plot_chi(dt, gas_name = "chi_h2o")
+          fname <- paste0(pname_png_daily, "/h2o_", lubridate::date(this_date), ".png")
+          ggsave(p, file = fname, type = "cairo")
           p <- plot_chi(dt, gas_name = "chi_co2")
           fname <- paste0(pname_png_daily, "/co2_", lubridate::date(this_date), ".png")
           ggsave(p, file = fname, type = "cairo")
@@ -464,7 +470,6 @@ filter_data <- function(site_id, expt_id, l_meta){      ## WIP
 
 }
 
-
 remove_deadband <- function(dt, initial_deadband_width = 150, final_deadband_width = 150,
                             chpos_tolerance_mV = 6, t_resid_threshold = 1,
                             method = c("time fit", "specified deadband only"), dryrun = FALSE) {
@@ -534,6 +539,11 @@ plot_chi <- function(dt, gas_name = "chi_n2o") {
   p <- p + geom_point(alpha = 0.1) ## WIP setting alpha adds computation time - try without
   p <- p + ylab(gas_name)
   p <- p + facet_wrap(~ chamber_id)
+  # alternative option - add save_plot argument
+  # fname <- here("output", dt$site_id[1], dt$expt_id[1], "png",
+                # paste0(gas_name, "_", 
+                # as.character(lubridate::date(dt$datect[1])), ".png"))
+  # if (save_plot) ggsave(p, file = fname, type = "cairo")  
   return(p)
 }
 
@@ -554,7 +564,6 @@ plot_chi_lm <- function(dt, gas_name = "chi_n2o") {
   }
   return(p)
 }
-
 
 calc_flux <- function(dt, gas_name = "chi_co2", t_co2_cut = TRUE, t_max_co2 = 120, min_dp = 120, use_STP = TRUE, PA = 1000, TA = 15) {
 # TODO: I don't see the need for this code block - just subset on t <= t_max_co2?
@@ -668,16 +677,17 @@ final_fluxes <- function(site_id, expt_id, l_meta){
   return(dt)
 }
 
-
-
 plot_flux <- function(dt_flux, flux_name = "f_co2",
                       sigma_name = "sigma_f_co2", site_id, expt_id,
-                      mult = 1, y_min = NA, y_max = NA) {
+                      mult = 1, y_min = NA, y_max = NA, 
+                      save_plot = FALSE) {
 
   dt_flux[, f     := get(flux_name) * mult]
   dt_flux[, sigma := get(sigma_name) * mult]
   dt_flux[, ci_lo := f - (sigma * 1.96)]
   dt_flux[, ci_hi := f + (sigma * 1.96)]
+  if (is.na(y_max)) y_max <- max(dt_flux[, ci_hi])
+  if (is.na(y_min)) y_min <- min(dt_flux[, ci_lo])
 
   p <- ggplot(dt_flux, aes(datect, f, colour = as.factor(chamber_id)))
   p <- p + geom_hline(yintercept = 0)
@@ -685,48 +695,53 @@ plot_flux <- function(dt_flux, flux_name = "f_co2",
   p <- p + geom_errorbar(aes(ymin = ci_lo, ymax = ci_hi))
   p <- p + facet_wrap(~trmt_id, nrow = length(unique(dt_flux$trmt_id)))
   p <- p + ylab(flux_name)
-  p <- p + ylim(y_min, y_max)
-  p
+  p <- p + ylim(c(y_min, y_max))
 
-  fname <- here("output", site_id, expt_id,
-    paste0(flux_name, "_timeseries.png"))
-  ggsave(p, file = fname, type = "cairo")
-
+  if (save_plot) {
+    fname <- here("output", site_id, expt_id, "png",
+      paste0(flux_name, "_timeseries.png"))
+    ggsave(p, file = fname, type = "cairo")
+  }
   return(p)
 }
 
-plot_n2o_flux <- function(dt_flux, flux_name = "f_N2O_dry",
-                          sigma_name = "sigma_N2O_dry", this_site_id, this_expt_id,
-                          l_meta, mult = 1000, y_min = -2, y_max = 10) {
-
-  l_meta$dt_mgmt
+plot_n2o_flux <- function(dt, flux_name = "f_n2o",
+                          sigma_name = "sigma_n2o", 
+                          this_site_id = "HRG", this_expt_id = "diurnal1",
+                          l_meta, mult = 1000, y_min = NA, y_max = NA, 
+                          save_plot = FALSE) {
   # subset metadata to site, experiment and data_location
   dt_mgmt <- l_meta$dt_mgmt[
     this_site_id == site_id &
       this_expt_id == expt_id]
   names(dt_mgmt) <- make.names(names(dt_mgmt))
-  str(dt_mgmt)
 
-  dt_flux[, f     := get(flux_name) * mult]
-  dt_flux[, sigma := get(sigma_name) * mult]
-  dt_flux[, ci_lo := f - (sigma * 1.96)]
-  dt_flux[, ci_hi := f + (sigma * 1.96)]
-
-  p <- ggplot(dt_flux, aes(datect, f))
+  # subset to just this experiment
+  dt <- dt[site_id == this_site_id & expt_id == this_expt_id]
+  
+  dt[, f     := get(flux_name) * mult]
+  dt[, sigma := get(sigma_name) * mult]
+  dt[, ci_lo := f - (sigma * 1.96)]
+  dt[, ci_hi := f + (sigma * 1.96)]
+  if (is.na(y_max)) y_max <- max(dt[, ci_hi])
+  if (is.na(y_min)) y_min <- min(dt[, ci_lo])
+  
+  p <- ggplot(dt, aes(datect, f))
   p <- p + geom_vline(data = dt_mgmt, aes(xintercept = start))
   p <- p + geom_hline(yintercept = 0)
-  p <- p + geom_point(aes(colour = as.factor(chamber_id)))
-  p <- p + geom_errorbar(aes(ymin = ci_lo, ymax = ci_hi, colour = as.factor(chamber_id)))
-  p <- p + facet_wrap(~trmt_id)
+  # p <- p + geom_point(aes(colour = as.factor(chamber_id)))
+  p <- p + geom_point(aes(colour = trmt_id))
+  p <- p + geom_errorbar(aes(ymin = ci_lo, ymax = ci_hi, colour = trmt_id))
+  # p <- p + facet_wrap(~ trmt_id)
   p <- p + ylab(flux_name)
+  p <- p + stat_smooth()
   p <- p + ylim(y_min, y_max)
-  p
-
-
-  fname <- here("output", site_id, expt_id,
-    paste0(flux_name, "_timeseries_with_treatment.png"))
-  ggsave(p, file = fname, type = "cairo")
-
+  
+  if (save_plot) {
+    fname <- here("output", this_site_id, this_expt_id, "png",
+      paste0(flux_name, "_timeseries_with_treatment.png"))
+    ggsave(p, file = fname, type = "cairo")
+  }
   return(p)
 }
 
@@ -739,7 +754,9 @@ plot_n2o_flux_diurnal <- function(dt_flux, flux_name = "f_N2O_dry",
   dt_flux[, ci_lo := f - (sigma * 1.96)]
   dt_flux[, ci_hi := f + (sigma * 1.96)]
   dt_flux[, h := lubridate::hour(datect) + lubridate::minute(datect) / 60]
-
+  if (is.na(y_max)) y_max <- max(dt[, ci_hi])
+  if (is.na(y_min)) y_min <- min(dt[, ci_lo])
+ 
   p <- ggplot(dt_flux, aes(h, f))
   p <- p + geom_point(colour = "yellow")
   p <- p + geom_errorbar(aes(ymin = ci_lo, ymax = ci_hi),
@@ -748,42 +765,257 @@ plot_n2o_flux_diurnal <- function(dt_flux, flux_name = "f_N2O_dry",
   p <- p + stat_smooth(method = "gam")
   p <- p + ylab(flux_name)
   p <- p + ylim(y_min, y_max)
-  p
 
 
-  fname <- here("output", site_id, expt_id,
+  fname <- here("output", this_site_id, this_expt_id, "png",
     paste0(flux_name, "_diurnal.png"))
   ggsave(p, file = fname, type = "cairo")
 
   return(p)
 }
 
-plot_flux_vs_xvar <- function(dt_flux, flux_name = "f_co2",
-                              sigma_name = "sigma_f_co2", xvar_name = "SWC",
+plot_flux_vs_xvar <- function(dt, flux_name = "f_co2",
+                              sigma_name = "sigma_f_co2", xvar_name = "datect",
                               colour_name = "trmt_id", facet_name = "trmt_id",
-                              site_id, expt_id,
-                              y_min = NA, y_max = NA) {
+                              colour_is_factor = TRUE, rows_only = FALSE,
+                              mult = 1, y_min = NA, y_max = NA, 
+                              save_plot = FALSE) {
 
-  dt_flux[, f     := get(flux_name)]
-  dt_flux[, x     := get(xvar_name)]
-  dt_flux[, sigma := get(sigma_name)]
-  dt_flux[, ci_lo := f - (sigma * 1.96)]
-  dt_flux[, ci_hi := f + (sigma * 1.96)]
-
-  p <- ggplot(dt_flux, aes(x, f, colour = as.factor(get(colour_name))))
+  dt[, f     := get(flux_name)  * mult]
+  dt[, sigma := get(sigma_name) * mult]
+  dt[, x     := get(xvar_name)]
+  dt[, ci_lo := f - (sigma * 1.96)]
+  dt[, ci_hi := f + (sigma * 1.96)]
+  if (is.na(y_max)) y_max <- max(dt[, ci_hi])
+  if (is.na(y_min)) y_min <- min(dt[, ci_lo])
+  
+  if (colour_is_factor) {
+    p <- ggplot(dt, aes(x, f, colour = as.factor(get(colour_name))))
+    p <- p + scale_colour_viridis(option="viridis", discrete = TRUE)
+  } else {
+    p <- ggplot(dt, aes(x, f, colour = get(colour_name)))
+    p <- p + scale_colour_viridis(option="viridis")
+  }
   p <- p + geom_point()
   p <- p + geom_errorbar(aes(ymin = ci_lo, ymax = ci_hi))
   p <- p + geom_hline(yintercept = 0)
-  p <- p + facet_wrap(~ get(facet_name))
+  #p <- p + facet_wrap(~ get(facet_name))
+  if (rows_only) {
+    p <- p + facet_wrap(~ get(facet_name), nrow = length(unique(dt[, get(facet_name)])))
+  } else {
+    p <- p + facet_wrap(~ get(facet_name))
+  }
   p <- p + ylab(flux_name) + xlab(xvar_name) + labs(colour = NULL)
   p <- p + ylim(y_min, y_max)
-  p
 
-  fname <- here("output", site_id, expt_id,
-    paste0(flux_name, "_vs_", xvar_name, ".png"))
-  ggsave(p, file = fname, type = "cairo")
-
+  if (save_plot) {
+    # use site & expt in first row for file name
+    fname <- here("output", dt[1, .(site_id, expt_id)],
+      paste0(flux_name, "_vs_", xvar_name, ".png"))
+    ggsave(p, file = fname, type = "cairo")
+  }
   return(p)
 }
 
+# function for opposite of "%in%"
 "%!in%" <- function(x, y) !("%in%"(x, y))
+
+# function for exponential moving average
+ema <- function (x, ratio) {
+  c(stats::filter(x * ratio, 1 - ratio, "recursive", init = x[1]))
+}
+
+finding_Nema <- function(dt_flux, l_meta, save_file = FALSE) {
+  dt_mgmt <- l_meta$dt_mgmt
+  names(dt_mgmt) <- make.names(names(dt_mgmt))
+  dt_mgmt <- dt_mgmt[N_appl_amount_kg.ha > 0]
+  dim(dt_mgmt)
+  # get the start and end dates for the experiment by joining on expt table
+  dt_expt <- l_meta$dt_expt[data_location == "local drive", 
+    .( site_id, expt_id, expt_name, start_date, end_date)]
+  dim(dt_expt)
+  dt_mgmt <- dt_mgmt[dt_expt, on = .(site_id = site_id, expt_id = expt_id)]
+  dt_mgmt <- dt_mgmt[N_appl_amount_kg.ha > 0]
+
+  # create a daily sequence covering all experiments in mgmt data
+  first_date_mgmt <- min(as.POSIXct(dt_mgmt$start_date))
+  last_date_mgmt  <- max(as.POSIXct(dt_mgmt$end_date))
+  # create a daily sequence covering all experiments in flux data
+  first_date_flux <- lubridate::floor_date(min(as.POSIXct(dt_flux$datect)), "day")
+  last_date_flux  <- lubridate::floor_date(max(as.POSIXct(dt_flux$datect)), "day")
+  first_date <- min(first_date_mgmt, first_date_flux)
+  last_date  <- max(last_date_mgmt, last_date_flux)
+  v_date <- seq(from = first_date, to = last_date, by = "days")
+  n_date <- length(v_date)
+
+  # create a data table in long format with all N application events, n_event x n_date
+  # restrict to the N application variables
+  dt_mgmt <- dt_mgmt[, .(site_id, expt_id, trmt_id, event_id, datect = as.POSIXct(round(start, "days")), N_appl_amount_kg.ha)]
+  # make a unique event id - could use event_id instead of start date if available
+  dt_mgmt[,  trmt_uid := paste0(expt_id, "_", trmt_id)]
+  dt_mgmt[, event_uid := paste0(expt_id, "_", trmt_id, "_", datect)]
+  n_event <- length(unique(dt_mgmt$event_uid))
+  v_event <- rep(dt_mgmt$event_uid, times = 1, length.out = NA, each = n_date)
+  v_dates <- rep(v_date,            times = n_event, length.out = NA, each = 1)
+  dt_date <- data.table(event_uid = v_event, datect = v_dates)
+  setkey(dt_mgmt, event_uid, datect)
+  setkey(dt_date, event_uid, datect)
+  # dt_date[dt_mgmt, ddate := i.datect]
+  dt_date[dt_mgmt, trmt_uid := trmt_uid, on = .(event_uid = event_uid)]
+  dt_date[dt_mgmt, N_appl := N_appl_amount_kg.ha]
+  dt_date[is.na(N_appl), N_appl := 0]
+  
+  # do ema averaging of Nappl
+  dt_date[, N_ema_010 := round(ema(N_appl, 0.10), 6), by = event_uid]
+  dt_date[, N_ema_025 := round(ema(N_appl, 0.25), 6), by = event_uid]
+  dt_date[, N_ema_050 := round(ema(N_appl, 0.50), 6), by = event_uid]
+
+  # set units
+  dt_date[, N_ema_010 := set_units(N_ema_010, kg/ha)]
+  dt_date[, N_ema_025 := set_units(N_ema_025, kg/ha)]
+  dt_date[, N_ema_050 := set_units(N_ema_050, kg/ha)]
+  
+  dt_date[, N_ema_010 := set_units(N_ema_010, mol_n2o/m^2)]
+  dt_date[, N_ema_025 := set_units(N_ema_025, mol_n2o/m^2)]
+  dt_date[, N_ema_050 := set_units(N_ema_050, mol_n2o/m^2)]
+
+  dt_date[, .(mean(N_appl), mean(N_ema_050)), by = event_uid]
+  
+  # add up all events for each trmt, so they can overlap
+  dt_date[, N_ema_010 := sum(N_ema_010), by = .(trmt_uid, datect)]
+  dt_date[, N_ema_025 := sum(N_ema_025), by = .(trmt_uid, datect)]
+  dt_date[, N_ema_050 := sum(N_ema_050), by = .(trmt_uid, datect)]
+  
+  # shift function for time lag
+  dt_date[, N_ema_010_1 := shift(N_ema_010, n = 1, fill = 0), by = trmt_uid]
+  dt_date[, N_ema_010_2 := shift(N_ema_010, n = 2, fill = 0), by = trmt_uid]
+  dt_date[, N_ema_010_3 := shift(N_ema_010, n = 3, fill = 0), by = trmt_uid]
+  dt_date[, N_ema_010_4 := shift(N_ema_010, n = 4, fill = 0), by = trmt_uid]
+  # 
+  dt_date[, N_ema_025_1 := shift(N_ema_025, n = 1, fill = 0), by = trmt_uid]
+  dt_date[, N_ema_025_2 := shift(N_ema_025, n = 2, fill = 0), by = trmt_uid]
+  dt_date[, N_ema_025_3 := shift(N_ema_025, n = 3, fill = 0), by = trmt_uid]
+  dt_date[, N_ema_025_4 := shift(N_ema_025, n = 4, fill = 0), by = trmt_uid]
+  # 
+  dt_date[, N_ema_050_1 := shift(N_ema_050, n = 1, fill = 0), by = trmt_uid]
+  dt_date[, N_ema_050_2 := shift(N_ema_050, n = 2, fill = 0), by = trmt_uid]
+  dt_date[, N_ema_050_3 := shift(N_ema_050, n = 3, fill = 0), by = trmt_uid]
+  dt_date[, N_ema_050_4 := shift(N_ema_050, n = 4, fill = 0), by = trmt_uid]
+  
+  
+  # dt_date[10:100] 
+  # dt_date[(869+10):(869+100)] 
+  # dt_date[19890:19900]
+  
+  dt_flux[,  trmt_uid := paste0(expt_id, "_", trmt_id)]
+  dt_flux[,  datect := lubridate::floor_date(datect, "day")]
+  unique(dt_flux$trmt_uid)
+  unique(dt_date$trmt_uid)
+  names(dt_flux)
+  names(dt_date)
+  dt_flux <- dt_flux[dt_date, on = .(trmt_uid = trmt_uid, datect = datect)]
+  return(dt_flux)
+}
+
+filter_fluxes <- function(dt, save_file = FALSE, fname = "dt_flux") {
+  # remove days during experiment when no flux measurements
+  dt <- dt[!is.na(site_id)]
+  # crude filtering of extreme outliers; units of umol/m2/s
+  dt <- dt[f_co2 > -50 & f_co2 < 50]
+  dt <- dt[f_n2o > -0.1 & f_n2o < 0.1]
+  dt <- dt[rmse_f_n2o < 0.021]
+  if (save_file) fwrite(dt, file = here("output", paste0(fname, ".csv")))
+  if (save_file)  qsave(dt, file = here("output", paste0(fname, ".qs")))
+  return(dt)  
+}
+
+plot_means_by_trmt <- function(dt, flux_name = "f_n2o",
+                              show_raw = TRUE,
+                              by_chamber = TRUE,
+                              mult = 1, save_plot = FALSE) {
+  dt[, f     := get(flux_name)  * mult]
+  
+  if (by_chamber) {
+    dt_summary <- dt[, .(f = mean(f, na.rm = TRUE), 
+                         f_sd = sd(f, na.rm = TRUE), 
+                         n    = .N), 
+                         by = .(trmt_id, chamber_id)] 
+    dt_summary[, chamber_id := as.factor(chamber_id)]
+  } else {
+    dt_summary <- dt[, .(f = mean(f, na.rm = TRUE), 
+                         f_sd = sd(f, na.rm = TRUE), 
+                         n    = .N), 
+                         by = trmt_id]
+  }
+  
+  dt_summary[, f_se := f_sd / sqrt(n)]
+  dt_summary[, ci_lo := f - (f_se * 1.96)]
+  dt_summary[, ci_hi := f + (f_se * 1.96)]
+    
+  # Combine with jitter points
+  p <- ggplot(dt, aes(trmt_id, f))
+  if (show_raw) {
+    p <- p + geom_jitter(position = position_jitter(0.2), color = "darkgray")
+    p <- p + geom_violin(color = "darkgray", trim = FALSE)
+  }
+  if (by_chamber) {
+    p <- p + geom_pointrange(aes(ymin = ci_lo, ymax = ci_hi, 
+      colour = trmt_id), position = position_jitter(0.2), data = dt_summary)
+  } else {
+    p <- p + geom_pointrange(aes(ymin = ci_lo, ymax = ci_hi), colour = "red", data = dt_summary)
+  }
+
+  if (save_plot) {
+    # use site & expt in first row for file name
+    fname <- here("output", dt[1, .(site_id, expt_id)],
+      paste0(flux_name, "_vs_", xvar_name, ".png"))
+    ggsave(p, file = fname, type = "cairo")
+  }
+  return(p)
+}
+
+bar_means_by_trmt <- function(dt, flux_name = "f_co2",
+                              mult = 1, save_plot = FALSE) {
+  dt[, f := get(flux_name)  * mult]
+  
+  dt_trmt <- dt[, .(f = mean(f, na.rm = TRUE), 
+                    f_sd = sd(f, na.rm = TRUE), 
+                    n    = .N), 
+                    by = trmt_id]
+  dt_cham <- dt[, .(f = mean(f, na.rm = TRUE), 
+                    f_sd = sd(f, na.rm = TRUE), 
+                    n    = .N), 
+                    by = .(trmt_id, chamber_id)] 
+  dt_cham[, chamber_id := as.factor(chamber_id)]
+  
+  dt_cham[, f_se := f_sd / sqrt(n)]
+  dt_cham[, ci_lo := f - (f_se * 1.96)]
+  dt_cham[, ci_hi := f + (f_se * 1.96)]
+    
+# Bar plots + jittered points + error bars
+  p <- ggplot(dt_cham, aes(trmt_id, f, colour = trmt_id))
+  p <- p + geom_hline(yintercept = 0)
+  p <- p + geom_col(data = dt_trmt, position = position_dodge(0.8), 
+           width = 0.7, fill = "white")
+  # p <- p + geom_jitter(position = position_jitter(0.2))
+  p <- p + geom_errorbar(
+    aes(ymin = ci_lo, ymax = ci_hi),
+    width = 0.1, position = position_jitter(0.2))
+    
+  m_lmer <- lmer(f ~ trmt_id + (1 | chamber_id), data = dt)
+  edf_lmer <- ggpredict(m_lmer, terms = c("trmt_id"))
+  df_lmer <- as.data.frame(edf_lmer)
+  names(df_lmer)[1] <- "trmt_id"
+  names(df_lmer)[2] <- "f"
+  # plot(edf_lmer) + ylim(0, NA)
+  p <- p + geom_pointrange(aes(ymin = conf.low, ymax = conf.high), 
+    colour = "black", data = df_lmer)    
+    
+  if (save_plot) {
+    # use site & expt in first row for file name
+    fname <- here("output", dt[1, .(site_id, expt_id)],
+      paste0(flux_name, "_vs_", xvar_name, ".png"))
+    ggsave(p, file = fname, type = "cairo")
+  }
+  return(p)
+}
