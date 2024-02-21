@@ -56,13 +56,11 @@ read_metadata <- function(fname_meta = "data-raw/skyline_meta-data.xlsx") {
     key = c("site_id"))
   dt_expt <- as.data.table(readxl::read_excel(fname_meta, sheet = "experiment"),
     key = c("site_id", "expt_id"))
-# TODO: dt_ghgo? = dt_time?
-# TODO: dt_ddbd? better as dt_band?
-  dt_ghgo <- as.data.table(readxl::read_excel(fname_meta, sheet = "analyser_time"))
+  dt_time <- as.data.table(readxl::read_excel(fname_meta, sheet = "analyser_time"))
   dt_trmt <- as.data.table(readxl::read_excel(fname_meta, sheet = "treatment"))
   dt_mgmt <- as.data.table(readxl::read_excel(fname_meta, sheet = "management_event"))
   dt_cham <- as.data.table(readxl::read_excel(fname_meta, sheet = "chamber"))
-  dt_ddbd <- as.data.table(readxl::read_excel(fname_meta, sheet = "deadbands"))
+  dt_band <- as.data.table(readxl::read_excel(fname_meta, sheet = "deadbands"))
   dt_badd <- as.data.table(readxl::read_excel(fname_meta, sheet = "bad_data"))
   dt_ancl <- as.data.table(readxl::read_excel(fname_meta, sheet = "ancilliay_timeseries_byChamber"))
 
@@ -71,11 +69,11 @@ read_metadata <- function(fname_meta = "data-raw/skyline_meta-data.xlsx") {
   return(list(
     dt_site = dt_site,
     dt_expt = dt_expt,
-    dt_ghgo = dt_ghgo,
+    dt_time = dt_time,
     dt_trmt = dt_trmt,
     dt_mgmt = dt_mgmt,
     dt_cham = dt_cham,
-    dt_ddbd = dt_ddbd,
+    dt_band = dt_band,
     dt_badd = dt_badd,
     dt_ancl = dt_ancl))
 }
@@ -129,8 +127,8 @@ get_ghg_data <- function(v_fnames, this_date, this_site_id, this_expt_id, l_meta
 
   # subset metadata to site, experiment and data_location
   dt_expt <- l_meta$dt_expt[this_site_id == site_id & this_expt_id == expt_id][1]
-  dt_ghgo <- l_meta$dt_ghgo[this_site_id == site_id & this_expt_id == expt_id]
-  dt_ghgo <- dt_ghgo[this_date >= start_date & this_date <= end_date]
+  dt_time <- l_meta$dt_time[this_site_id == site_id & this_expt_id == expt_id]
+  dt_time <- dt_time[this_date >= start_date & this_date <= end_date]
 
   # standardise instrument-specific variable names
   v_names <- c("chi_h2o", "chi_co2", "chi_ch4", "chi_n2o", "P_cavity", "T_cavity")
@@ -149,7 +147,7 @@ get_ghg_data <- function(v_fnames, this_date, this_site_id, this_expt_id, l_meta
   }
 
 
-  dt_ghg[, datect := datect + seconds(dt_ghgo$t_offset)]
+  dt_ghg[, datect := datect + seconds(dt_time$t_offset)]
 
   dt_ghg[, datect := lubridate::round_date(datect, "secs")]
   # aggregate to 1 Hz i.e. do 1-sec averaging
@@ -187,10 +185,10 @@ get_ch_position_data <- function(v_fnames, chpos_multiplier, this_date, this_sit
   # do we need this as a factor?
   # dt[, chamber_id := as.factor(chamber_id)]
 
-  dt_ddbd <- l_meta$dt_ddbd[this_site_id == site_id & this_expt_id == expt_id]
-  dt_ddbd <- dt_ddbd[this_date >= start_date & this_date <= end_date]
+  dt_band <- l_meta$dt_band[this_site_id == site_id & this_expt_id == expt_id]
+  dt_band <- dt_band[this_date >= start_date & this_date <= end_date]
 
-  if (dt_ddbd$ch_pos_change){
+  if (dt_band$ch_pos_change){
     dt[, seq_id  := rleid(chamber_id)]
     dt[, n := .N, by = seq_id]
     dt[n == 1, ':='(chamber_id = NA, C_mV_residual = NA)]
@@ -246,12 +244,11 @@ get_soilmet_data <- function(v_fnames, o2_data = TRUE) {
   return(dt)
 }
 
-# TODO: min_dp? = n_min, min number of points to use for a flux?
 get_data <- function(v_dates = NULL, this_site_id = "HRG",
                      this_expt_id = "diurnal1", data_location, l_meta,
                      seq_id_to_plot = 1,
                      method = "time fit", dryrun = FALSE,
-                     save_plots = FALSE, write_all = FALSE, min_dp = 300) {
+                     save_plots = FALSE, write_all = FALSE, n_min = 300) {
   # create directories for output
   pname_csv        <- here("output", this_site_id, this_expt_id, "csv")
   pname_png        <- here("output", this_site_id, this_expt_id, "png")
@@ -289,24 +286,24 @@ get_data <- function(v_dates = NULL, this_site_id = "HRG",
     # load data - ghg, position, soilmet (functions above)
     dt_ghg <- get_ghg_data(l_files$v_fnames_ghg, this_date, this_site_id, this_expt_id, l_meta)
     dt_pos <- get_ch_position_data(l_files$v_fnames_pos, dt_expt$chpos_multiplier, this_date, this_site_id, this_expt_id, l_meta)
-    dt_met <- get_soilmet_data(l_files$v_fnames_met, o2_data <- dt_expt$o2_data)
+    dt_met <- get_soilmet_data(l_files$v_fnames_met, o2_data = dt_expt$o2_data)
 
     dt <- dt_pos[dt_ghg, on = .(datect = datect), roll = TRUE] # right rolling join of dt_pos and dt_ghg into dt by datetime, i.e. where there is
                                                                # missing values in certain columns (e.g. soilmet) carry on repeating the previous
                                                                # value until there is the next value in that column
 
     # find relevant deadband data
-    dt_ddbd <- l_meta$dt_ddbd[this_site_id == site_id & this_expt_id == expt_id]
-    dt_ddbd <- dt_ddbd[this_date >= start_date & this_date <= end_date]
+    dt_band <- l_meta$dt_band[this_site_id == site_id & this_expt_id == expt_id]
+    dt_band <- dt_band[this_date >= start_date & this_date <= end_date]
 
     # for data without high frequency chamber position fill missing chamber ids with last occurring value
-    if (dt_ddbd$ch_pos_fill) {dt <- setnafill(dt, type = "locf", cols = c("chamber_id", "C_Voltage", "C_mV_residual"))}
+    if (dt_band$ch_pos_fill) {dt <- setnafill(dt, type = "locf", cols = c("chamber_id", "C_Voltage", "C_mV_residual"))}
 
     dt[, chamber_id := as.factor(chamber_id)]
     dt <- dt_met[dt, on = .(chamber_id = chamber_id, datect = datect), roll = TRUE] # rolling join of dt_met with dt based on chamber id column
 
     # shift chamber id down to fix lag
-    dt3 <- dt[,chamber_id:=shift(chamber_id, dt_ddbd$t_shift, type = "lag")]
+    dt3 <- dt[,chamber_id:=shift(chamber_id, dt_band$t_shift, type = "lag")]
 
     dt <- dt[!is.na(chamber_id)]  # remove where chamber_id data is missing
 
@@ -326,7 +323,7 @@ get_data <- function(v_dates = NULL, this_site_id = "HRG",
     # enumerate the records within a mmnt sequence
     dt[, t := seq_len(.N), by = mmnt_id] # add column t with numbers 1:length(dt split by mmnt_id)
     # remove records beyond the maximum mmnt length - this assumes measurements taken every second!!
-    dt <- dt[t < dt_ddbd$t_max] # i.e. 5 minutes => t_max = 300
+    dt <- dt[t < dt_band$t_max] # i.e. 5 minutes => t_max = 300
 
     dt[, n := .N, by = mmnt_id] # n contains a value for the number of times each mmnt_id appears (i.e. .N provides a variable for number of instances)
     # dt <- dt[!is.na(chi_h2o)] # subset to valid ghg data only ???
@@ -341,16 +338,16 @@ get_data <- function(v_dates = NULL, this_site_id = "HRG",
     if (length(unique(dt$chamber_id)) < 2) next #
     # remove deadband and plot (function below)
     dt <- remove_deadband(dt,
-      initial_deadband_width = dt_ddbd$initial_deadband_width,
-      final_deadband_width   = dt_ddbd$final_deadband_width,
+      initial_deadband_width = dt_band$initial_deadband_width,
+      final_deadband_width   = dt_band$final_deadband_width,
       chpos_tolerance_mV = dt_expt$chpos_tolerance_mV,
-      t_resid_threshold = dt_ddbd$t_resid_threshold,
+      t_resid_threshold = dt_band$t_resid_threshold,
       method = method, dryrun = dryrun)
     # re-check how many data are left
     dt[, n_filt := .N, by = mmnt_id] # n contains a value for the number of times each mmnt_id appears (i.e. .N provides a variable for number of instances)
     # if too few data left (100?), or too many (ch position sensor stuck)
     # then remove the whole measurement sequence
-    dt <- dt[n_filt > min_dp & n_filt < 1800] # do we need n_filt < 1800 if already filtering out above where chamber position gets stuck??
+    dt <- dt[n_filt > n_min & n_filt < 1800] # do we need n_filt < 1800 if already filtering out above where chamber position gets stuck??
     # skip if no data left after filtering
     if (nrow(dt) == 0) next
 
@@ -358,14 +355,14 @@ get_data <- function(v_dates = NULL, this_site_id = "HRG",
     if (dryrun) {
       fname <- paste0(pname_csv_unfilt, "/dt_chi_", lubridate::date(this_date), ".csv")
       p <- plot_data_unfiltered(dt, gas_name = "chi_co2",
-        initial_deadband_width = dt_ddbd$initial_deadband_width,
-        final_deadband_width   = dt_ddbd$final_deadband_width, seq_id_to_plot = seq_id_to_plot)
+        initial_deadband_width = dt_band$initial_deadband_width,
+        final_deadband_width   = dt_band$final_deadband_width, seq_id_to_plot = seq_id_to_plot)
       p <- plot_data_unfiltered(dt, gas_name = "chi_ch4",
-        initial_deadband_width = dt_ddbd$initial_deadband_width,
-        final_deadband_width   = dt_ddbd$final_deadband_width, seq_id_to_plot = seq_id_to_plot)
+        initial_deadband_width = dt_band$initial_deadband_width,
+        final_deadband_width   = dt_band$final_deadband_width, seq_id_to_plot = seq_id_to_plot)
       p <- plot_data_unfiltered(dt, gas_name = "chi_n2o",
-        initial_deadband_width = dt_ddbd$initial_deadband_width,
-        final_deadband_width   = dt_ddbd$final_deadband_width, seq_id_to_plot = seq_id_to_plot)
+        initial_deadband_width = dt_band$initial_deadband_width,
+        final_deadband_width   = dt_band$final_deadband_width, seq_id_to_plot = seq_id_to_plot)
       fwrite(dt, file = fname)
       l_dt_chi[[i]] <- dt
     }
@@ -403,14 +400,13 @@ get_data <- function(v_dates = NULL, this_site_id = "HRG",
 
 
     # calculate fluxes each gas and save to file and add to list
-# TODO: why not calculate fluxes in dryrun? Just write to unfilt folder    
-# TODO: Don't use assignment operator (<-) in function argument, use "="
+# TODO: why not calculate fluxes in dryrun? Just write to unfilt folder
     if (!dryrun) {
-      # dt <- calc_flux(dt, gas_name = "chi_h2o", use_STP <- dt_expt$use_STP)
-      dt <- calc_flux(dt, gas_name = "chi_co2", t_co2_cut <- dt_ddbd$t_co2_cut, t_max_co2 <- dt_ddbd$t_co2_max,
-                      min_dp <- min_dp, use_STP <- dt_expt$use_STP)
-      dt <- calc_flux(dt, gas_name = "chi_ch4", use_STP <- dt_expt$use_STP)
-      dt <- calc_flux(dt, gas_name = "chi_n2o", use_STP <- dt_expt$use_STP)
+      # dt <- calc_flux(dt, gas_name = "chi_h2o", use_STP = dt_expt$use_STP)
+      dt <- calc_flux(dt, gas_name = "chi_co2", t_co2_cut = dt_band$t_co2_cut, t_max_co2 = dt_band$t_co2_max,
+                      n_min = n_min, use_STP = dt_expt$use_STP)
+      dt <- calc_flux(dt, gas_name = "chi_ch4", use_STP = dt_expt$use_STP)
+      dt <- calc_flux(dt, gas_name = "chi_n2o", use_STP = dt_expt$use_STP)
       fname <- paste0(pname_csv, "/dt_chi_", lubridate::date(this_date), ".csv")
       fwrite(dt, file = fname)
       l_dt_chi[[i]] <- dt
@@ -442,8 +438,8 @@ get_data <- function(v_dates = NULL, this_site_id = "HRG",
   return(list(dt_chi = dt_chi, dt_flux = dt_flux))
 }
 
-# TODO: this function is never called
-filter_data <- function(site_id, expt_id, l_meta){      ## WIP
+# TODO: this function is never called, WIP for filtering data where chanber didn't close
+filter_data <- function(site_id, expt_id, l_meta){
   pname_csv <- here("output", site_id, expt_id, "csv")
   pattern <- paste0(.Platform$file.sep, "dt_chi.*\\.csv$")
   v_fnames <- dir_ls(pname_csv, regexp = pattern)
@@ -502,7 +498,7 @@ remove_deadband <- function(dt, initial_deadband_width = 150, final_deadband_wid
     dt[(t / n <= 0.25 | t / n >= 0.75) &
       t_resid > t_resid_threshold, exclude := TRUE]
     # exclude the pre-defined deadband
-    dt[t < initial_deadband_width | t > start_final_deadband, 
+    dt[t < initial_deadband_width | t > start_final_deadband,
       exclude := TRUE]
   }
   # subset the data to only include those with exclude = FALSE, unless it is a dryrun, where keep all the data with exclude = TRUE or FALSE
@@ -541,13 +537,14 @@ plot_chi <- function(dt, gas_name = "chi_n2o") {
   p <- p + facet_wrap(~ chamber_id)
   # alternative option - add save_plot argument
   # fname <- here("output", dt$site_id[1], dt$expt_id[1], "png",
-                # paste0(gas_name, "_", 
+                # paste0(gas_name, "_",
                 # as.character(lubridate::date(dt$datect[1])), ".png"))
-  # if (save_plot) ggsave(p, file = fname, type = "cairo")  
+  # if (save_plot) ggsave(p, file = fname, type = "cairo")
   return(p)
 }
 
-# TODO: remove this function add geom_smooth as an option in plot_chi
+# TODO: remove this function add geom_smooth as an option in plot_chi, this plots all fluxes
+# for a specified date only separately
 plot_chi_lm <- function(dt, gas_name = "chi_n2o") {
   v_chamber <- as.numeric(unique(dt$chamber_id))
   for (i in seq_along(v_chamber)) {
@@ -565,26 +562,26 @@ plot_chi_lm <- function(dt, gas_name = "chi_n2o") {
   return(p)
 }
 
-calc_flux <- function(dt, gas_name = "chi_co2", t_co2_cut = TRUE, t_max_co2 = 120, min_dp = 120, use_STP = TRUE, PA = 1000, TA = 15) {
-# TODO: I don't see the need for this code block - just subset on t <= t_max_co2?
+calc_flux <- function(dt, gas_name = "chi_co2", t_co2_cut = TRUE, t_max_co2 = 120, n_min = 120, use_STP = TRUE, PA = 1000, TA = 15) {
+  # TODO: I don't see the need for this code block - just subset on t <= t_max_co2? EA added comments to explain what code is doing
   if (gas_name == "chi_co2" && t_co2_cut) {
     ## only need to shorten day/light fluxes so split by PAR
     dt_1 <- dt[, t:= seq_len(.N), by = mmnt_id]
-    # create light/dark ID column
-    dt_2 <- dt_1[, .SD[1], by = mmnt_id]
+    # create light/dark ID column based on PAR at start of enclosure (sometimes crosses PAR threshold in the middle of longer enclosures)
+    dt_2 <- dt_1[, .SD[1], by = mmnt_id] # subset to first row of each mmnt_id
     dt_2 <- dt_2[, light := TRUE]
     dt_2 <- dt_2[PPFD_IN < 2, light := FALSE]
-    dt_2 <- dt_2[, .(mmnt_id, light)]
+    dt_2 <- dt_2[, .(mmnt_id, light)] # subset dt to mmnt_id and light id only to add back onto full dt
     # add light/dark ID column to dt
     dt_1 <- dt_1[dt_2, on = .(mmnt_id=mmnt_id)]
     # split by light/dark ID and shorten light fluxes
-    dt_dark <- dt_1[light == FALSE,]
-    dt_light <- dt_1[light == TRUE,]
-    dt_light <- dt_light[t <= t_max_co2] # i.e. 5 minutes => t_max = 300
-    dt_co2 <- rbind(dt_light, dt_dark)
+    dt_dark <- dt_1[light == FALSE,] # subset all dark data
+    dt_light <- dt_1[light == TRUE,] # subset all light data
+    dt_light <- dt_light[t <= t_max_co2] # remove excess rows in light dt
+    dt_co2 <- rbind(dt_light, dt_dark) # combine dark and shortened light dt into one dt for flux calculation
     dt_co2 <- dt_co2 %>% dplyr::arrange(mmnt_id)
     dt_co2[, n_f_co2 := .N, by = mmnt_id]
-    # dt_co2 <- dt_co2[n_f_co2 > min_dp]
+    # dt_co2 <- dt_co2[n_f_co2 > n_min]
 
     form <- formula(paste(gas_name, "~ t"))
     # use substr to get rid of "chi" in gas name
@@ -660,7 +657,8 @@ combine_fluxes <- function(site_id, expt_id) {
   return(dt)
 }
 
-# TODO: this function is never called
+# TODO: this function is never called, same as combine_fluxes function above but uses bad_data
+# sheet in metadata to remove bad data
 final_fluxes <- function(site_id, expt_id, l_meta){
   pname_csv <- here("output", site_id, expt_id, "csv")
   pattern <- paste0(.Platform$file.sep, "dt_flux.*\\.csv$")
@@ -679,7 +677,7 @@ final_fluxes <- function(site_id, expt_id, l_meta){
 
 plot_flux <- function(dt_flux, flux_name = "f_co2",
                       sigma_name = "sigma_f_co2", site_id, expt_id,
-                      mult = 1, y_min = NA, y_max = NA, 
+                      mult = 1, y_min = NA, y_max = NA,
                       save_plot = FALSE) {
 
   dt_flux[, f     := get(flux_name) * mult]
@@ -706,9 +704,9 @@ plot_flux <- function(dt_flux, flux_name = "f_co2",
 }
 
 plot_n2o_flux <- function(dt, flux_name = "f_n2o",
-                          sigma_name = "sigma_n2o", 
+                          sigma_name = "sigma_n2o",
                           this_site_id = "HRG", this_expt_id = "diurnal1",
-                          l_meta, mult = 1000, y_min = NA, y_max = NA, 
+                          l_meta, mult = 1000, y_min = NA, y_max = NA,
                           save_plot = FALSE) {
   # subset metadata to site, experiment and data_location
   dt_mgmt <- l_meta$dt_mgmt[
@@ -718,14 +716,14 @@ plot_n2o_flux <- function(dt, flux_name = "f_n2o",
 
   # subset to just this experiment
   dt <- dt[site_id == this_site_id & expt_id == this_expt_id]
-  
+
   dt[, f     := get(flux_name) * mult]
   dt[, sigma := get(sigma_name) * mult]
   dt[, ci_lo := f - (sigma * 1.96)]
   dt[, ci_hi := f + (sigma * 1.96)]
   if (is.na(y_max)) y_max <- max(dt[, ci_hi])
   if (is.na(y_min)) y_min <- min(dt[, ci_lo])
-  
+
   p <- ggplot(dt, aes(datect, f))
   p <- p + geom_vline(data = dt_mgmt, aes(xintercept = start))
   p <- p + geom_hline(yintercept = 0)
@@ -736,7 +734,7 @@ plot_n2o_flux <- function(dt, flux_name = "f_n2o",
   p <- p + ylab(flux_name)
   p <- p + stat_smooth()
   p <- p + ylim(y_min, y_max)
-  
+
   if (save_plot) {
     fname <- here("output", this_site_id, this_expt_id, "png",
       paste0(flux_name, "_timeseries_with_treatment.png"))
@@ -756,7 +754,7 @@ plot_n2o_flux_diurnal <- function(dt_flux, flux_name = "f_N2O_dry",
   dt_flux[, h := lubridate::hour(datect) + lubridate::minute(datect) / 60]
   if (is.na(y_max)) y_max <- max(dt[, ci_hi])
   if (is.na(y_min)) y_min <- min(dt[, ci_lo])
- 
+
   p <- ggplot(dt_flux, aes(h, f))
   p <- p + geom_point(colour = "yellow")
   p <- p + geom_errorbar(aes(ymin = ci_lo, ymax = ci_hi),
@@ -778,7 +776,7 @@ plot_flux_vs_xvar <- function(dt, flux_name = "f_co2",
                               sigma_name = "sigma_f_co2", xvar_name = "datect",
                               colour_name = "trmt_id", facet_name = "trmt_id",
                               colour_is_factor = TRUE, rows_only = FALSE,
-                              mult = 1, y_min = NA, y_max = NA, 
+                              mult = 1, y_min = NA, y_max = NA,
                               save_plot = FALSE) {
 
   dt[, f     := get(flux_name)  * mult]
@@ -788,7 +786,7 @@ plot_flux_vs_xvar <- function(dt, flux_name = "f_co2",
   dt[, ci_hi := f + (sigma * 1.96)]
   if (is.na(y_max)) y_max <- max(dt[, ci_hi])
   if (is.na(y_min)) y_min <- min(dt[, ci_lo])
-  
+
   if (colour_is_factor) {
     p <- ggplot(dt, aes(x, f, colour = as.factor(get(colour_name))))
     p <- p + scale_colour_viridis(option="viridis", discrete = TRUE)
@@ -831,7 +829,7 @@ finding_Nema <- function(dt_flux, l_meta, save_file = FALSE) {
   dt_mgmt <- dt_mgmt[N_appl_amount_kg.ha > 0]
   dim(dt_mgmt)
   # get the start and end dates for the experiment by joining on expt table
-  dt_expt <- l_meta$dt_expt[data_location == "local drive", 
+  dt_expt <- l_meta$dt_expt[data_location == "local drive",
     .( site_id, expt_id, expt_name, start_date, end_date)]
   dim(dt_expt)
   dt_mgmt <- dt_mgmt[dt_expt, on = .(site_id = site_id, expt_id = expt_id)]
@@ -864,7 +862,7 @@ finding_Nema <- function(dt_flux, l_meta, save_file = FALSE) {
   dt_date[dt_mgmt, trmt_uid := trmt_uid, on = .(event_uid = event_uid)]
   dt_date[dt_mgmt, N_appl := N_appl_amount_kg.ha]
   dt_date[is.na(N_appl), N_appl := 0]
-  
+
   # do ema averaging of Nappl
   dt_date[, N_ema_010 := round(ema(N_appl, 0.10), 6), by = event_uid]
   dt_date[, N_ema_025 := round(ema(N_appl, 0.25), 6), by = event_uid]
@@ -874,39 +872,39 @@ finding_Nema <- function(dt_flux, l_meta, save_file = FALSE) {
   dt_date[, N_ema_010 := set_units(N_ema_010, kg/ha)]
   dt_date[, N_ema_025 := set_units(N_ema_025, kg/ha)]
   dt_date[, N_ema_050 := set_units(N_ema_050, kg/ha)]
-  
+
   dt_date[, N_ema_010 := set_units(N_ema_010, mol_n2o/m^2)]
   dt_date[, N_ema_025 := set_units(N_ema_025, mol_n2o/m^2)]
   dt_date[, N_ema_050 := set_units(N_ema_050, mol_n2o/m^2)]
 
   dt_date[, .(mean(N_appl), mean(N_ema_050)), by = event_uid]
-  
+
   # add up all events for each trmt, so they can overlap
   dt_date[, N_ema_010 := sum(N_ema_010), by = .(trmt_uid, datect)]
   dt_date[, N_ema_025 := sum(N_ema_025), by = .(trmt_uid, datect)]
   dt_date[, N_ema_050 := sum(N_ema_050), by = .(trmt_uid, datect)]
-  
+
   # shift function for time lag
   dt_date[, N_ema_010_1 := shift(N_ema_010, n = 1, fill = 0), by = trmt_uid]
   dt_date[, N_ema_010_2 := shift(N_ema_010, n = 2, fill = 0), by = trmt_uid]
   dt_date[, N_ema_010_3 := shift(N_ema_010, n = 3, fill = 0), by = trmt_uid]
   dt_date[, N_ema_010_4 := shift(N_ema_010, n = 4, fill = 0), by = trmt_uid]
-  # 
+  #
   dt_date[, N_ema_025_1 := shift(N_ema_025, n = 1, fill = 0), by = trmt_uid]
   dt_date[, N_ema_025_2 := shift(N_ema_025, n = 2, fill = 0), by = trmt_uid]
   dt_date[, N_ema_025_3 := shift(N_ema_025, n = 3, fill = 0), by = trmt_uid]
   dt_date[, N_ema_025_4 := shift(N_ema_025, n = 4, fill = 0), by = trmt_uid]
-  # 
+  #
   dt_date[, N_ema_050_1 := shift(N_ema_050, n = 1, fill = 0), by = trmt_uid]
   dt_date[, N_ema_050_2 := shift(N_ema_050, n = 2, fill = 0), by = trmt_uid]
   dt_date[, N_ema_050_3 := shift(N_ema_050, n = 3, fill = 0), by = trmt_uid]
   dt_date[, N_ema_050_4 := shift(N_ema_050, n = 4, fill = 0), by = trmt_uid]
-  
-  
-  # dt_date[10:100] 
-  # dt_date[(869+10):(869+100)] 
+
+
+  # dt_date[10:100]
+  # dt_date[(869+10):(869+100)]
   # dt_date[19890:19900]
-  
+
   dt_flux[,  trmt_uid := paste0(expt_id, "_", trmt_id)]
   dt_flux[,  datect := lubridate::floor_date(datect, "day")]
   unique(dt_flux$trmt_uid)
@@ -926,7 +924,7 @@ filter_fluxes <- function(dt, save_file = FALSE, fname = "dt_flux") {
   dt <- dt[rmse_f_n2o < 0.021]
   if (save_file) fwrite(dt, file = here("output", paste0(fname, ".csv")))
   if (save_file)  qsave(dt, file = here("output", paste0(fname, ".qs")))
-  return(dt)  
+  return(dt)
 }
 
 plot_means_by_trmt <- function(dt, flux_name = "f_n2o",
@@ -934,24 +932,24 @@ plot_means_by_trmt <- function(dt, flux_name = "f_n2o",
                               by_chamber = TRUE,
                               mult = 1, save_plot = FALSE) {
   dt[, f     := get(flux_name)  * mult]
-  
+
   if (by_chamber) {
-    dt_summary <- dt[, .(f = mean(f, na.rm = TRUE), 
-                         f_sd = sd(f, na.rm = TRUE), 
-                         n    = .N), 
-                         by = .(trmt_id, chamber_id)] 
+    dt_summary <- dt[, .(f = mean(f, na.rm = TRUE),
+                         f_sd = sd(f, na.rm = TRUE),
+                         n    = .N),
+                         by = .(trmt_id, chamber_id)]
     dt_summary[, chamber_id := as.factor(chamber_id)]
   } else {
-    dt_summary <- dt[, .(f = mean(f, na.rm = TRUE), 
-                         f_sd = sd(f, na.rm = TRUE), 
-                         n    = .N), 
+    dt_summary <- dt[, .(f = mean(f, na.rm = TRUE),
+                         f_sd = sd(f, na.rm = TRUE),
+                         n    = .N),
                          by = trmt_id]
   }
-  
+
   dt_summary[, f_se := f_sd / sqrt(n)]
   dt_summary[, ci_lo := f - (f_se * 1.96)]
   dt_summary[, ci_hi := f + (f_se * 1.96)]
-    
+
   # Combine with jitter points
   p <- ggplot(dt, aes(trmt_id, f))
   if (show_raw) {
@@ -959,7 +957,7 @@ plot_means_by_trmt <- function(dt, flux_name = "f_n2o",
     p <- p + geom_violin(color = "darkgray", trim = FALSE)
   }
   if (by_chamber) {
-    p <- p + geom_pointrange(aes(ymin = ci_lo, ymax = ci_hi, 
+    p <- p + geom_pointrange(aes(ymin = ci_lo, ymax = ci_hi,
       colour = trmt_id), position = position_jitter(0.2), data = dt_summary)
   } else {
     p <- p + geom_pointrange(aes(ymin = ci_lo, ymax = ci_hi), colour = "red", data = dt_summary)
@@ -977,40 +975,40 @@ plot_means_by_trmt <- function(dt, flux_name = "f_n2o",
 bar_means_by_trmt <- function(dt, flux_name = "f_co2",
                               mult = 1, save_plot = FALSE) {
   dt[, f := get(flux_name)  * mult]
-  
-  dt_trmt <- dt[, .(f = mean(f, na.rm = TRUE), 
-                    f_sd = sd(f, na.rm = TRUE), 
-                    n    = .N), 
+
+  dt_trmt <- dt[, .(f = mean(f, na.rm = TRUE),
+                    f_sd = sd(f, na.rm = TRUE),
+                    n    = .N),
                     by = trmt_id]
-  dt_cham <- dt[, .(f = mean(f, na.rm = TRUE), 
-                    f_sd = sd(f, na.rm = TRUE), 
-                    n    = .N), 
-                    by = .(trmt_id, chamber_id)] 
+  dt_cham <- dt[, .(f = mean(f, na.rm = TRUE),
+                    f_sd = sd(f, na.rm = TRUE),
+                    n    = .N),
+                    by = .(trmt_id, chamber_id)]
   dt_cham[, chamber_id := as.factor(chamber_id)]
-  
+
   dt_cham[, f_se := f_sd / sqrt(n)]
   dt_cham[, ci_lo := f - (f_se * 1.96)]
   dt_cham[, ci_hi := f + (f_se * 1.96)]
-    
+
 # Bar plots + jittered points + error bars
   p <- ggplot(dt_cham, aes(trmt_id, f, colour = trmt_id))
   p <- p + geom_hline(yintercept = 0)
-  p <- p + geom_col(data = dt_trmt, position = position_dodge(0.8), 
+  p <- p + geom_col(data = dt_trmt, position = position_dodge(0.8),
            width = 0.7, fill = "white")
   # p <- p + geom_jitter(position = position_jitter(0.2))
   p <- p + geom_errorbar(
     aes(ymin = ci_lo, ymax = ci_hi),
     width = 0.1, position = position_jitter(0.2))
-    
+
   m_lmer <- lmer(f ~ trmt_id + (1 | chamber_id), data = dt)
   edf_lmer <- ggpredict(m_lmer, terms = c("trmt_id"))
   df_lmer <- as.data.frame(edf_lmer)
   names(df_lmer)[1] <- "trmt_id"
   names(df_lmer)[2] <- "f"
   # plot(edf_lmer) + ylim(0, NA)
-  p <- p + geom_pointrange(aes(ymin = conf.low, ymax = conf.high), 
-    colour = "black", data = df_lmer)    
-    
+  p <- p + geom_pointrange(aes(ymin = conf.low, ymax = conf.high),
+    colour = "black", data = df_lmer)
+
   if (save_plot) {
     # use site & expt in first row for file name
     fname <- here("output", dt[1, .(site_id, expt_id)],
