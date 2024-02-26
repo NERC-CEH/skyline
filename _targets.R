@@ -12,7 +12,7 @@ Sys.setenv(TZ = "GMT")
 
 # Set target options:
 v_pkgs = c("here", "fs", "data.table", "readxl", "units", "qs", "ggplot2",
-  "lubridate", "dplyr", "future", "viridis", "lme4", "ggeffects")
+  "lubridate", "dplyr", "future", "viridis", "lme4", "ggeffects", "photobiology")
 tar_option_set(
   # envir = getNamespace("skyline"), use source code from installed package
   packages = v_pkgs,

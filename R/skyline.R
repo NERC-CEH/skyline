@@ -303,7 +303,7 @@ get_data <- function(v_dates = NULL, this_site_id = "HRG",
     dt <- dt_met[dt, on = .(chamber_id = chamber_id, datect = datect), roll = TRUE] # rolling join of dt_met with dt based on chamber id column
 
     # shift chamber id down to fix lag
-    dt3 <- dt[,chamber_id:=shift(chamber_id, dt_band$t_shift, type = "lag")]
+    dt <- dt[,chamber_id:=shift(chamber_id, dt_band$t_shift, type = "lag")]
 
     dt <- dt[!is.na(chamber_id)]  # remove where chamber_id data is missing
 
@@ -327,6 +327,15 @@ get_data <- function(v_dates = NULL, this_site_id = "HRG",
 
     dt[, n := .N, by = mmnt_id] # n contains a value for the number of times each mmnt_id appears (i.e. .N provides a variable for number of instances)
     # dt <- dt[!is.na(chi_h2o)] # subset to valid ghg data only ???
+
+    # add day/night factor create light/dark ID column based on start of enclosure (sometimes crosses sunrise/sunset threshold in the middle of longer enclosures)
+    dt_site <- l_meta$dt_site[this_site_id == site_id & this_expt_id == expt_id]
+    my.geocode <- data.frame(lon = dt_site$longitude, lat = dt_site$latitude, address = dt_site$site_name)
+    dt_dayf <- dt[, .SD[1], by = mmnt_id]
+    dt_dayf <- dt_dayf[, light := is_daytime(date = dt_dayf$datect, tz = "GMT", geocode = my.geocode)]
+    dt_dayf <- dt_dayf[, .(mmnt_id, light)]
+
+    dt <- dt[dt_dayf, on = .(mmnt_id = mmnt_id)]
 
     # join with chamber data
     dt_cham <- l_meta$dt_cham[this_site_id == site_id & this_expt_id == expt_id] # read chamber sheet from metadata for corresponding site and expt id
@@ -567,13 +576,6 @@ calc_flux <- function(dt, gas_name = "chi_co2", t_co2_cut = TRUE, t_max_co2 = 12
   if (gas_name == "chi_co2" && t_co2_cut) {
     ## only need to shorten day/light fluxes so split by PAR
     dt_1 <- dt[, t:= seq_len(.N), by = mmnt_id]
-    # create light/dark ID column based on PAR at start of enclosure (sometimes crosses PAR threshold in the middle of longer enclosures)
-    dt_2 <- dt_1[, .SD[1], by = mmnt_id] # subset to first row of each mmnt_id
-    dt_2 <- dt_2[, light := TRUE]
-    dt_2 <- dt_2[PPFD_IN < 2, light := FALSE]
-    dt_2 <- dt_2[, .(mmnt_id, light)] # subset dt to mmnt_id and light id only to add back onto full dt
-    # add light/dark ID column to dt
-    dt_1 <- dt_1[dt_2, on = .(mmnt_id=mmnt_id)]
     # split by light/dark ID and shorten light fluxes
     dt_dark <- dt_1[light == FALSE,] # subset all dark data
     dt_light <- dt_1[light == TRUE,] # subset all light data
