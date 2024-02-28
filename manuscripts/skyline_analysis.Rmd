@@ -23,7 +23,7 @@ render(input = here("manuscripts", "skyline_analysis.Rmd"), output_file = here("
 render(input = here("manuscripts", "skyline_analysis.Rmd"), output_file = here("manuscripts", "skyline_analysis.html"))
 ```
 
-Some intital results from modelling EMEP output as a function of pollutant emissions and meteorological variables.
+Some provisional results from analysis of skyline data from DIVINE and ASSIST projects.
 
 <!--- { startup -->
 ```{r startup, eval=TRUE, echo=FALSE, include=FALSE}
@@ -36,6 +36,27 @@ knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE,
 ```
 <!--- } -->
 
+<!--- { Diurnal variation -->
+# Diurnal variation
+
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Diurnal variation in CO2 flux, N2O flux, PPFD and air temperature, averaged over all experiments."}
+tar_read(p_diurnal_lumped, store = here("_targets"))
+```
+
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Diurnal variation in CO2 flux, N2O flux, PPFD and air temperature, averaged separately for each experiment"}
+tar_read(p_diurnal_by_expt, store = here("_targets"))
+```
+
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Diurnal variation in CO2 flux, N2O flux, PPFD and air temperature, averaged separately for each day. Separating by each day gives equal weight to days with little variation, so shows relative variation rather than absolute variation."}
+tar_read(p_diurnal_by_day, store = here("_targets"))
+```
+
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Diurnal variation in CO2 flux, N2O flux, PPFD and air temperature, averaged separately for each experiment and for each day. Separating by each experiment and day gives equal weight to both experiment and days with little variation, so shows relative variation rather than absolute variation."}
+tar_read(p_diurnal_by_day_by_expt, store = here("_targets"))
+```
+
+<!--- } -->
+
 <!--- { biochar1 -->
 # Biochar Experiment
 
@@ -43,23 +64,27 @@ knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE,
 tar_read(p_bar_n2o_biochar1, store = here("_targets"))
 ```
 
-```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Map showing EMEP SURF ug NH3."}
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "CO2 flux over time by treatment."}
 tar_read(p_flux_co2_biochar1, store = here("_targets"))
 ```
 
-```{r, echo = FALSE}
+```{r, echo = FALSE, fig.cap = "CH4 flux over time by treatment."}
 tar_read(p_flux_ch4_biochar1, store = here("_targets"))
 ```
 
-```{r, echo = FALSE, fig.cap = "EMEP SURF-ug-NH3 as function of e-gf5 emissions, by year."}
+```{r, echo = FALSE, fig.cap = "N2O flux over time by treatment."}
 tar_read(p_flux_n2o_biochar1, store = here("_targets"))
 ```
 
-```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "EMEP SURF-ug-NH3 as function of e-gf5 emissions, by year."}
+```{r, echo = FALSE, fig.cap = "N2O flux versus temperature by treatment."}
+tar_read(p_flux_n2o_T_biochar1, store = here("_targets"))
+```
+
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "N2O flux over time by treatment, showing N application dates as vertical black lines."}
 tar_read(p_flux_n2o_with_Nappl_biochar1, store = here("_targets"))
 ```
 
-```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "EMEP SURF-ug-NH3 as function of e-gf5 emissions, by year."}
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Diurnal variation in N2O flux."}
 tar_read(p_flux_n2o_diurnal_biochar1, store = here("_targets"))
 ```
 <!--- } -->
@@ -71,23 +96,27 @@ tar_read(p_flux_n2o_diurnal_biochar1, store = here("_targets"))
 tar_read(p_bar_n2o_yield1, store = here("_targets"))
 ```
 
-```{r, results = "hold", fig.show = "hold", echo = FALSE}
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "CO2 flux over time by treatment."}
 tar_read(p_flux_co2_yield1, store = here("_targets"))
 ```
 
-```{r, eval = TRUE, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "EMEP SURF-ug-NO2 as function of e-gf5 emissions, by year."}
+```{r, eval = TRUE, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "CH4 flux over time by treatment."}
 tar_read(p_flux_ch4_yield1, store = here("_targets"))
 ```
 
-```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "EMEP SURF-ug-NO2 as function of e-gf5 emissions, by year."}
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "N2O flux over time by treatment."}
 tar_read(p_flux_n2o_yield1, store = here("_targets"))
 ```
 
-```{r, eval = TRUE, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "EMEP SURF-ug-NO2 as function of e-gf5 emissions, by year."}
+```{r, echo = FALSE, fig.cap = "N2O flux versus temperature by treatment."}
+tar_read(p_flux_n2o_T_yield1, store = here("_targets"))
+```
+
+```{r, eval = TRUE, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "N2O flux over time by treatment, showing N application dates as vertical black lines."}
 tar_read(p_flux_n2o_with_Nappl_yield1, store = here("_targets"))
 ```
 
-```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "EMEP SURF-ug-NO2 as function of e-gf5 emissions, by year."}
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Diurnal variation in N2O flux."}
 tar_read(p_flux_n2o_diurnal_yield1, store = here("_targets"))
 ```
 <!--- } -->
@@ -98,23 +127,27 @@ tar_read(p_flux_n2o_diurnal_yield1, store = here("_targets"))
 tar_read(p_bar_n2o_split1, store = here("_targets"))
 ```
 
-```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Map showing EMEP SURF ug NH3."}
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "CO2 flux over time by treatment."}
 tar_read(p_flux_co2_split1, store = here("_targets"))
 ```
 
-```{r, echo = FALSE}
+```{r, echo = FALSE, fig.cap = "CH4 flux over time by treatment."}
 tar_read(p_flux_ch4_split1, store = here("_targets"))
 ```
 
-```{r, echo = FALSE, fig.cap = "EMEP SURF-ug-NH3 as function of e-gf5 emissions, by year."}
+```{r, echo = FALSE, fig.cap = "N2O flux over time by treatment."}
 tar_read(p_flux_n2o_split1, store = here("_targets"))
 ```
 
-```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "EMEP SURF-ug-NH3 as function of e-gf5 emissions, by year."}
+```{r, echo = FALSE, fig.cap = "N2O flux versus temperature by treatment."}
+tar_read(p_flux_n2o_T_split1, store = here("_targets"))
+```
+
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "N2O flux over time by treatment, showing N application dates as vertical black lines."}
 tar_read(p_flux_n2o_with_Nappl_split1, store = here("_targets"))
 ```
 
-```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "EMEP SURF-ug-NH3 as function of e-gf5 emissions, by year."}
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Diurnal variation in N2O flux."}
 tar_read(p_flux_n2o_diurnal_split1, store = here("_targets"))
 ```
 <!--- } -->
@@ -125,23 +158,27 @@ tar_read(p_flux_n2o_diurnal_split1, store = here("_targets"))
 tar_read(p_bar_n2o_digestate1, store = here("_targets"))
 ```
 
-```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Map showing EMEP SURF ug NH3."}
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "CO2 flux over time by treatment."}
 tar_read(p_flux_co2_digestate1, store = here("_targets"))
 ```
 
-```{r, echo = FALSE}
+```{r, echo = FALSE, fig.cap = "CH4 flux over time by treatment."}
 tar_read(p_flux_ch4_digestate1, store = here("_targets"))
 ```
 
-```{r, echo = FALSE, fig.cap = "EMEP SURF-ug-NH3 as function of e-gf5 emissions, by year."}
+```{r, echo = FALSE, fig.cap = "N2O flux over time by treatment."}
 tar_read(p_flux_n2o_digestate1, store = here("_targets"))
 ```
 
-```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "EMEP SURF-ug-NH3 as function of e-gf5 emissions, by year."}
+```{r, echo = FALSE, fig.cap = "N2O flux versus temperature by treatment."}
+tar_read(p_flux_n2o_T_digestate1, store = here("_targets"))
+```
+
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "N2O flux over time by treatment, showing N application dates as vertical black lines."}
 tar_read(p_flux_n2o_with_Nappl_digestate1, store = here("_targets"))
 ```
 
-```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "EMEP SURF-ug-NH3 as function of e-gf5 emissions, by year."}
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Diurnal variation in N2O flux."}
 tar_read(p_flux_n2o_diurnal_digestate1, store = here("_targets"))
 ```
 <!--- } -->
@@ -152,23 +189,27 @@ tar_read(p_flux_n2o_diurnal_digestate1, store = here("_targets"))
 tar_read(p_bar_n2o_diurnal1, store = here("_targets"))
 ```
 
-```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Map showing EMEP SURF ug NH3."}
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "CO2 flux over time by treatment."}
 tar_read(p_flux_co2_diurnal1, store = here("_targets"))
 ```
 
-```{r, echo = FALSE}
+```{r, echo = FALSE, fig.cap = "CH4 flux over time by treatment."}
 tar_read(p_flux_ch4_diurnal1, store = here("_targets"))
 ```
 
-```{r, echo = FALSE, fig.cap = "EMEP SURF-ug-NH3 as function of e-gf5 emissions, by year."}
+```{r, echo = FALSE, fig.cap = "N2O flux over time by treatment."}
 tar_read(p_flux_n2o_diurnal1, store = here("_targets"))
 ```
 
-```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "EMEP SURF-ug-NH3 as function of e-gf5 emissions, by year."}
+```{r, echo = FALSE, fig.cap = "N2O flux versus temperature by treatment."}
+tar_read(p_flux_n2o_T_diurnal1, store = here("_targets"))
+```
+
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "N2O flux over time by treatment, showing N application dates as vertical black lines."}
 tar_read(p_flux_n2o_with_Nappl_diurnal1, store = here("_targets"))
 ```
 
-```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "EMEP SURF-ug-NH3 as function of e-gf5 emissions, by year."}
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Diurnal variation in N2O flux."}
 tar_read(p_flux_n2o_diurnal_diurnal1, store = here("_targets"))
 ```
 <!--- } -->

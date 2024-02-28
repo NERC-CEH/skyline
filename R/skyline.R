@@ -329,7 +329,7 @@ get_data <- function(v_dates = NULL, this_site_id = "HRG",
     # dt <- dt[!is.na(chi_h2o)] # subset to valid ghg data only ???
 
     # add day/night factor create light/dark ID column based on start of enclosure (sometimes crosses sunrise/sunset threshold in the middle of longer enclosures)
-    dt_site <- l_meta$dt_site[this_site_id == site_id & this_expt_id == expt_id]
+    dt_site <- l_meta$dt_site[this_site_id == site_id]
     my.geocode <- data.frame(lon = dt_site$longitude, lat = dt_site$latitude, address = dt_site$site_name)
     dt_dayf <- dt[, .SD[1], by = mmnt_id]
     dt_dayf <- dt_dayf[, light := is_daytime(date = dt_dayf$datect, tz = "GMT", geocode = my.geocode)]
@@ -1015,6 +1015,96 @@ bar_means_by_trmt <- function(dt, flux_name = "f_co2",
     # use site & expt in first row for file name
     fname <- here("output", dt[1, .(site_id, expt_id)],
       paste0(flux_name, "_vs_", xvar_name, ".png"))
+    ggsave(p, file = fname, type = "cairo")
+  }
+  return(p)
+}
+
+plot_diurnal <- function(dt_flux, split_by_day = FALSE, split_by_expt = FALSE) {
+
+  dt_flux[, date_day := lubridate::round_date(datect, "days")]
+  if (split_by_day & split_by_expt) {
+    dt_flux[, f_co2_scaled   := scale(f_co2),    by = .(date_day, expt_id, chamber_id)]
+    dt_flux[, f_n2o_scaled   := scale(f_n2o),    by = .(date_day, expt_id, chamber_id)]
+    dt_flux[, TA_scaled      := scale(TA),       by = .(date_day, expt_id, chamber_id)]
+    dt_flux[, TSoil_scaled      := scale(TSoil), by = .(date_day, expt_id, chamber_id)]
+    dt_flux[, PPFD_IN_scaled := scale(PPFD_IN),  by = .(date_day, expt_id, chamber_id)]
+  } else if (!split_by_day & split_by_expt) {
+    dt_flux[, f_co2_scaled   := scale(f_co2),    by = .(expt_id, chamber_id)]
+    dt_flux[, f_n2o_scaled   := scale(f_n2o),    by = .(expt_id, chamber_id)]
+    dt_flux[, TA_scaled      := scale(TA),       by = .(expt_id, chamber_id)]
+    dt_flux[, TSoil_scaled      := scale(TSoil), by = .(expt_id, chamber_id)]
+    dt_flux[, PPFD_IN_scaled := scale(PPFD_IN),  by = .(expt_id, chamber_id)]
+  } else if (split_by_day & !split_by_expt) {
+    dt_flux[, f_co2_scaled   := scale(f_co2),   by = date_day]
+    dt_flux[, f_n2o_scaled   := scale(f_n2o),   by = date_day]
+    dt_flux[, TA_scaled      := scale(TA),      by = date_day]
+    dt_flux[, TSoil_scaled      := scale(TSoil),by = date_day]
+    dt_flux[, PPFD_IN_scaled := scale(PPFD_IN), by = date_day]
+  } else {
+    dt_flux[, f_co2_scaled   := scale(f_co2)  ]
+    dt_flux[, f_n2o_scaled   := scale(f_n2o)  ]
+    dt_flux[, TA_scaled      := scale(TA)     ]
+    dt_flux[, TSoil_scaled      := scale(TSoil)     ]
+    dt_flux[, PPFD_IN_scaled := scale(PPFD_IN)]  
+  }
+  
+  dt_flux[, h := lubridate::hour(datect) + lubridate::minute(datect) / 60]
+
+  p <- ggplot(dt_flux, aes(h, PPFD_IN_scaled, colour = Variable))
+  p <- p + scale_colour_manual(name="Variable",
+    values = c("PPFD" = "yellow", "TA" = "red",  "TSoil" = "orange", 
+               "CO2 flux" = "green", "N2O flux" = "blue"))
+  p <- p + geom_hline(yintercept = 0)
+  p <- p + stat_smooth(aes(colour = "PPFD"), method = "gam")
+  p <- p + stat_smooth(aes(y = TA_scaled, colour = "TA"), method = "gam")
+  p <- p + stat_smooth(aes(y = TSoil_scaled, colour = "TSoil"), method = "gam")
+  p <- p + stat_smooth(aes(y = f_co2_scaled * -1, colour = "CO2 flux"), method = "gam")
+  p <- p + stat_smooth(aes(y = f_n2o_scaled, colour = "N2O flux"), method = "gam")
+  if (split_by_expt) p <- p + facet_wrap(~ expt_id)
+  p <- p + xlab("Hour") + ylab("Scaled variation (sd units)")
+  p
+  return(p)
+}
+
+# difference in fit is measure of linearity
+get_nonlinearity <- function(dt) {
+  m_gam <- gam(log(chi_co2) ~ s(t), data = dt)
+  m_lm  <-  lm(log(chi_co2) ~   t,  data = dt)
+  # difference in residual variance, sqrt to original units of umol/mol
+  nonlinearity <- sqrt(summary(m_lm)$sigma^2 - m_gam$sig2)
+  # alternative: do diff -> expected constant value
+  # or predict from gam over ~ 5 t intervals
+  # look at abs or rel var in these
+  # sigma_slope
+  # or look at diff in predictions at t = 1000 lm vs gam
+  # or comparev 95% CI / sigma_analyser
+  # how much more uncertainty than expected?
+  # No - nonlinearity is not the problem - expected for large co2 fluxes
+  # occurence of concavity or step changes at any point is the implausible issue
+  # fit an asymptotic model and compare with high k gam
+  # should we log or not?
+  return(nonlinearity)
+}
+
+plot_chi_with_nonlinearity <- function(dt, save_plot = FALSE) {
+  # dt <- l_out_biochar1$dt_chi
+  v_mmnt_id <- unique(dt$mmnt_id)
+  v_mmnt_id <- sample(v_mmnt_id, 20)
+  dt <- dt[mmnt_id %in% v_mmnt_id]
+  dt[, nonlin := get_nonlinearity(.SD) * 1000, by = mmnt_id]
+
+  p <- ggplot(dt, aes(t, chi_co2, colour = nonlin > 10, group = mmnt_id))
+  p <- p + geom_point() ## WIP setting alpha adds computation time - try without
+  p <- p + stat_smooth(method = "lm", colour = "red")
+  p <- p + stat_smooth(method = "gam", colour = "blue")
+  npc_txt <- geom_text_npc(aes(npcx = 0.5, npcy = 0.9, label = round(nonlin)), size = 4)
+  p <- p + npc_txt
+  p <- p + facet_wrap(~ reorder(mmnt_id, -nonlin, mean))
+  if (save_plot) {
+    # use site & expt in first row for file name
+    fname <- here("output", dt[1, .(site_id, expt_id)],
+      "p_nonlinearity.png")
     ggsave(p, file = fname, type = "cairo")
   }
   return(p)
