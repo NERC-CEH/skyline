@@ -80,12 +80,11 @@ read_metadata <- function(fname_meta = "data-raw/skyline_meta-data.xlsx") {
 
 check_data_available <- function(this_date, this_site_id = "EHD",
                                  this_expt_id = "digestate1",
-                                 this_data_location = "local drive", l_meta) {
-  # subset metadata to site, experiment and data_location
+                                 l_meta) {
+  # subset metadata to site and experiment
   dt <- l_meta$dt_expt[
     this_site_id == site_id &
-      this_expt_id == expt_id &
-      this_data_location == data_location]
+      this_expt_id == expt_id]
   if (nrow(dt) != 1) stop(paste("Duplicate meta-data rows found in", fname_meta))
 
   # find the raw ghg files
@@ -125,7 +124,7 @@ get_ghg_data <- function(v_fnames, this_date, this_site_id, this_expt_id, l_meta
   l_dt <- lapply(v_fnames, fread)
   dt_ghg <- rbindlist(l_dt)
 
-  # subset metadata to site, experiment and data_location
+  # subset metadata to site and experiment
   dt_expt <- l_meta$dt_expt[this_site_id == site_id & this_expt_id == expt_id][1]
   dt_time <- l_meta$dt_time[this_site_id == site_id & this_expt_id == expt_id]
   dt_time <- dt_time[this_date >= start_date & this_date <= end_date]
@@ -245,7 +244,7 @@ get_soilmet_data <- function(v_fnames, o2_data = TRUE) {
 }
 
 get_data <- function(v_dates = NULL, this_site_id = "HRG",
-                     this_expt_id = "diurnal1", data_location, l_meta,
+                     this_expt_id = "diurnal1", l_meta,
                      seq_id_to_plot = 1,
                      method = "time fit", dryrun = FALSE,
                      save_plots = FALSE, write_all = FALSE, n_min = 300) {
@@ -264,7 +263,7 @@ get_data <- function(v_dates = NULL, this_site_id = "HRG",
   fs::dir_create(pname_png_unfilt)
   fs::dir_create(pname_png_unfilt_daily)
 
-  # subset metadata to site, experiment and data_location
+  # subset metadata to site and experiment
   dt_expt <- l_meta$dt_expt[this_site_id == site_id & this_expt_id == expt_id][1]
 
   # if not provided, use experiment start & end dates from metadata
@@ -280,7 +279,7 @@ get_data <- function(v_dates = NULL, this_site_id = "HRG",
   for (i in seq_along(v_dates)) {  #seq_along equivalent to 1:length(v_dates), so processing one day at a time (/per loop)
     this_date <- v_dates[i]
     print(paste("Processing ", this_date))
-    l_files <- check_data_available(this_date, this_site_id, this_expt_id, data_location, l_meta) # check if data is available (function above)
+    l_files <- check_data_available(this_date, this_site_id, this_expt_id, l_meta) # check if data is available (function above)
     if (length(l_files$v_fnames_ghg) == 0 || length(l_files$v_fnames_pos) == 0) next  # if no data today, move on to next day
 
     # load data - ghg, position, soilmet (functions above)
@@ -432,8 +431,8 @@ get_data <- function(v_dates = NULL, this_site_id = "HRG",
     }
 
   }
-  dt_chi  <- rbindlist(l_dt_chi)
-  dt_flux <- rbindlist(l_dt_flux)
+  dt_chi  <- rbindlist(l_dt_chi, fill=TRUE)
+  dt_flux <- rbindlist(l_dt_flux, fill=TRUE)
 
   if (write_all & !dryrun) {
     # save to files
@@ -710,7 +709,7 @@ plot_n2o_flux <- function(dt, flux_name = "f_n2o",
                           this_site_id = "HRG", this_expt_id = "diurnal1",
                           l_meta, mult = 1000, y_min = NA, y_max = NA,
                           save_plot = FALSE) {
-  # subset metadata to site, experiment and data_location
+  # subset metadata to site and experiment
   dt_mgmt <- l_meta$dt_mgmt[
     this_site_id == site_id &
       this_expt_id == expt_id]
@@ -831,7 +830,7 @@ finding_Nema <- function(dt_flux, l_meta, save_file = FALSE) {
   dt_mgmt <- dt_mgmt[N_appl_amount_kg.ha > 0]
   dim(dt_mgmt)
   # get the start and end dates for the experiment by joining on expt table
-  dt_expt <- l_meta$dt_expt[data_location == "local drive",
+  dt_expt <- l_meta$dt_expt[,
     .( site_id, expt_id, expt_name, start_date, end_date)]
   dim(dt_expt)
   dt_mgmt <- dt_mgmt[dt_expt, on = .(site_id = site_id, expt_id = expt_id)]

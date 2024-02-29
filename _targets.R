@@ -28,7 +28,6 @@ data.table::setDTthreads(threads = 1)
 data.table::getDTthreads()
 
 #### SPECIFY ####
-data_location <- "local drive"  # local or network drive
 # site, experiment, and dates to process:
 # site_id <- "EHD"
 # expt_id <- "digestate1"
@@ -60,7 +59,7 @@ list(
   tar_target(
     name = l_out_yield1,
     command = get_data(v_dates, this_site_id = "EHD", this_expt_id = "yield1",
-      data_location, l_meta,
+      l_meta,
       seq_id_to_plot = seq_id_to_plot,
       method = method, dryrun = dryrun, save_plots = save_plots,
       write_all = write_all, n_min = n_min)
@@ -69,7 +68,7 @@ list(
   tar_target(
     name = l_out_split1,
     command = get_data(v_dates, this_site_id = "EHD", this_expt_id = "split1",
-      data_location, l_meta,
+      l_meta,
       seq_id_to_plot = seq_id_to_plot,
       method = method, dryrun = dryrun, save_plots = save_plots,
       write_all = write_all, n_min = n_min)
@@ -78,7 +77,7 @@ list(
   tar_target(
     name = l_out_biochar1,
     command = get_data(v_dates, this_site_id = "EHD", this_expt_id = "biochar1",
-      data_location, l_meta,
+      l_meta,
       seq_id_to_plot = seq_id_to_plot,
       method = method, dryrun = dryrun, save_plots = save_plots,
       write_all = write_all, n_min = n_min)
@@ -87,7 +86,7 @@ list(
   tar_target(
     name = l_out_digestate1,
     command = get_data(v_dates, this_site_id = "EHD", this_expt_id = "digestate1",
-      data_location, l_meta,
+      l_meta,
       seq_id_to_plot = seq_id_to_plot,
       method = method, dryrun = dryrun, save_plots = save_plots,
       write_all = write_all, n_min = n_min)
@@ -96,7 +95,7 @@ list(
   tar_target(
     name = l_out_diurnal1,
     command = get_data(v_dates, this_site_id = "HRG", this_expt_id = "diurnal1",
-      data_location, l_meta,
+      l_meta,
       seq_id_to_plot = seq_id_to_plot,
       method = method, dryrun = dryrun, save_plots = save_plots,
       write_all = write_all, n_min = n_min)
@@ -438,10 +437,10 @@ list(
     name = p_nonlinearity_digestate1,
     command = plot_chi_with_nonlinearity(l_out_digestate1$dt_chi, save_plot = TRUE)
   ),
-  tar_target(
-    name = p_nonlinearity_diurnal1,
-    command = plot_chi_with_nonlinearity(l_out_diurnal1$dt_chi, save_plot = TRUE)
-  ),
+  # tar_target(
+    # name = p_nonlinearity_diurnal1,
+    # command = plot_chi_with_nonlinearity(l_out_diurnal1$dt_chi, save_plot = TRUE)
+  # ),
   # manuscript file:
   tar_render(manuscript_pdf, here("manuscripts", "skyline_analysis.Rmd"))
 )
