@@ -492,7 +492,8 @@ remove_deadband <- function(dt, initial_deadband_width = 150, final_deadband_wid
     # predict time based on all GHG concentrations, weighted towards the middle
     # and use this to filter out the nonlinear part
     if (length(unique(dt$mmnt_id)) > 1) {
-      form <- formula(t ~ chi_co2 + chi_ch4 + chi_n2o + chi_h2o + C_Voltage)
+      # form <- formula(t ~ chi_co2 + chi_ch4 + chi_n2o + chi_h2o + C_Voltage)
+      form <- formula(chi_co2 ~ t) # + chi_ch4 + chi_n2o + chi_h2o + C_Voltage)
       # very slow on JASMIN:
       # m <- lm(t ~ chi_co2 + chi_ch4 + chi_n2o + chi_h2o + mmnt_id, w = w, data = dt) # nolint
       dt[, t_pred := predict(lm(form, w = w, data = .SD)), by = mmnt_id]
@@ -571,78 +572,32 @@ plot_chi_lm <- function(dt, gas_name = "chi_n2o") {
 }
 
 calc_flux <- function(dt, gas_name = "chi_co2", t_co2_cut = TRUE, t_max_co2 = 120, n_min = 120, use_STP = TRUE, PA = 1000, TA = 15) {
-  # TODO: I don't see the need for this code block - just subset on t <= t_max_co2? EA added comments to explain what code is doing
-  if (gas_name == "chi_co2" && t_co2_cut) {
-    ## only need to shorten day/light fluxes so split by PAR
-    dt_1 <- dt[, t:= seq_len(.N), by = mmnt_id]
-    # split by light/dark ID and shorten light fluxes
-    dt_dark <- dt_1[light == FALSE,] # subset all dark data
-    dt_light <- dt_1[light == TRUE,] # subset all light data
-    dt_light <- dt_light[t <= t_max_co2] # remove excess rows in light dt
-    dt_co2 <- rbind(dt_light, dt_dark) # combine dark and shortened light dt into one dt for flux calculation
-    dt_co2 <- dt_co2 %>% dplyr::arrange(mmnt_id)
-    dt_co2[, n_f_co2 := .N, by = mmnt_id]
-    # dt_co2 <- dt_co2[n_f_co2 > n_min]
-
-    form <- formula(paste(gas_name, "~ t"))
-    # use substr to get rid of "chi" in gas name
-    flux_var_name  <- paste0("f_",     substr(gas_name, nchar(gas_name) - 2, nchar(gas_name)))
-    sigma_var_name <- paste0("sigma_f_", substr(gas_name, nchar(gas_name) - 2, nchar(gas_name)))
-    rmse_var_name <- paste0("rmse_f_", substr(gas_name, nchar(gas_name) - 2, nchar(gas_name)))
-    r2_var_name <- paste0("r2_f_", substr(gas_name, nchar(gas_name) - 2, nchar(gas_name)))
-    pvalue_var_name <- paste0("p_value_f_", substr(gas_name, nchar(gas_name) - 2, nchar(gas_name)))
-    dt_co2[, dchi_dt := coef(lm(form, data = .SD))[2], by = mmnt_id]
-    dt_co2[, sigma_dchi_dt := summary(lm(form, data = .SD))$coefficients[2, 2], by = mmnt_id]
-    if (use_STP) {
-      rho <- PA * 100 / (8.31447 * (TA + 273.15))
-    } else {
-      # calculate mean air density for each mmnt if we have the specific data
-      dt_co2[, rho := PA * 100 / (8.31447 * (TA + 273.15))]
-    }
-    dt_co2[, (flux_var_name) := dchi_dt        * rho * volume_m3 / area_m2]
-    dt_co2[, (sigma_var_name) := sigma_dchi_dt * rho * volume_m3 / area_m2]
-    dt_co2[, (r2_var_name) := summary(lm(form, data = .SD))$r.squared, by = mmnt_id]
-    dt_co2[, (rmse_var_name) := sqrt(mean(summary(lm(form, data = .SD))$residuals^2)), by = mmnt_id]
-    dt_co2[, (pvalue_var_name) := summary(lm(form, data = .SD))$coefficients[2,4]]
-
-    # remove un-needed variables
-    dt_co2[, dchi_dt := NULL]
-    dt_co2[, sigma_dchi_dt := NULL]
-
-    dt_co2 <- dt_co2[, .SD[1], by = mmnt_id] # subset to only first record of each mmnt_id
-    dt_co2 <- dt_co2 %>% select("mmnt_id", contains("f_co2"))
-
-    #rolling join with unshortened dataset
-    dt <- dt[dt_co2, on = "mmnt_id", roll = TRUE]
-
+  form <- formula(paste(gas_name, "~ t"))
+  # use substr to get rid of "chi" in gas name
+  flux_var_name  <- paste0("f_",     substr(gas_name, nchar(gas_name) - 2, nchar(gas_name)))
+  sigma_var_name <- paste0("sigma_f_", substr(gas_name, nchar(gas_name) - 2, nchar(gas_name)))
+  rmse_var_name <- paste0("rmse_f_", substr(gas_name, nchar(gas_name) - 2, nchar(gas_name)))
+  r2_var_name <- paste0("r2_f_", substr(gas_name, nchar(gas_name) - 2, nchar(gas_name)))
+  pvalue_var_name <- paste0("p_value_f_", substr(gas_name, nchar(gas_name) - 2, nchar(gas_name)))
+  # adj.r2_var_name <- paste0("adj_r2_f_", substr(gas_name, nchar(gas_name) - 2, nchar(gas_name)))
+  dt[, dchi_dt := coef(lm(form, data = .SD))[2], by = mmnt_id]
+  dt[, sigma_dchi_dt := summary(lm(form, data = .SD))$coefficients[2, 2], by = mmnt_id]
+  if (use_STP) {
+    rho <- PA * 100 / (8.31447 * (TA + 273.15))
   } else {
-    form <- formula(paste(gas_name, "~ t"))
-    # use substr to get rid of "chi" in gas name
-    flux_var_name  <- paste0("f_",     substr(gas_name, nchar(gas_name) - 2, nchar(gas_name)))
-    sigma_var_name <- paste0("sigma_f_", substr(gas_name, nchar(gas_name) - 2, nchar(gas_name)))
-    rmse_var_name <- paste0("rmse_f_", substr(gas_name, nchar(gas_name) - 2, nchar(gas_name)))
-    r2_var_name <- paste0("r2_f_", substr(gas_name, nchar(gas_name) - 2, nchar(gas_name)))
-    pvalue_var_name <- paste0("p_value_f_", substr(gas_name, nchar(gas_name) - 2, nchar(gas_name)))
-    # adj.r2_var_name <- paste0("adj_r2_f_", substr(gas_name, nchar(gas_name) - 2, nchar(gas_name)))
-    dt[, dchi_dt := coef(lm(form, data = .SD))[2], by = mmnt_id]
-    dt[, sigma_dchi_dt := summary(lm(form, data = .SD))$coefficients[2, 2], by = mmnt_id]
-    if (use_STP) {
-      rho <- PA * 100 / (8.31447 * (TA + 273.15))
-    } else {
-      # calculate mean air density for each mmnt if we have the specific data
-      dt[, rho := PA * 100 / (8.31447 * (TA + 273.15))]
-    }
-    dt[, (flux_var_name) := dchi_dt        * rho * volume_m3 / area_m2]
-    dt[, (sigma_var_name) := sigma_dchi_dt * rho * volume_m3 / area_m2]
-    dt[, (r2_var_name) := summary(lm(form, data = .SD))$r.squared, by = mmnt_id]
-    dt[, (rmse_var_name) := sqrt(mean(summary(lm(form, data = .SD))$residuals^2)), by = mmnt_id]
-    dt[, (pvalue_var_name) := summary(lm(form, data = .SD))$coefficients[2,4]]
-    # dt[, (adj.r2_var_name) := summary(lm(form, data = .SD))$adj.r.squared, by = mmnt_id]
-
-    # remove un-needed variables
-    dt[, dchi_dt := NULL]
-    dt[, sigma_dchi_dt := NULL]
+    # calculate mean air density for each mmnt if we have the specific data
+    dt[, rho := PA * 100 / (8.31447 * (TA + 273.15))]
   }
+  dt[, (flux_var_name) := dchi_dt        * rho * volume_m3 / area_m2]
+  dt[, (sigma_var_name) := sigma_dchi_dt * rho * volume_m3 / area_m2]
+  dt[, (r2_var_name) := summary(lm(form, data = .SD))$r.squared, by = mmnt_id]
+  dt[, (rmse_var_name) := sqrt(mean(summary(lm(form, data = .SD))$residuals^2)), by = mmnt_id]
+  dt[, (pvalue_var_name) := summary(lm(form, data = .SD))$coefficients[2,4]]
+  # dt[, (adj.r2_var_name) := summary(lm(form, data = .SD))$adj.r.squared, by = mmnt_id]
+
+  # remove un-needed variables
+  dt[, dchi_dt := NULL]
+  dt[, sigma_dchi_dt := NULL]
   return(dt)
 }
 

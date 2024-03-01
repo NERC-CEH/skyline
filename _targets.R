@@ -46,7 +46,7 @@ write_all <- TRUE   # combine files for days processes
 n_min <- 100
 method <-  "time fit"  # "time fit" or "specified deadband only"
 # dryrun FALSE = remove deadbands and calculate fluxes, TRUE = plots showing deadbands for visual checking before calculating fluxes
-dryrun <- FALSE
+dryrun <- TRUE
 
 #### list of targets: ####
 list(
