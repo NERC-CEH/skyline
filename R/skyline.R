@@ -479,6 +479,7 @@ remove_deadband <- function(dt, initial_deadband_width = 150, final_deadband_wid
                             method = c("time fit", "specified deadband only"), dryrun = FALSE) {
 
   dt[, exclude := FALSE]
+  # exclude if the chamber position voltage is not close to the expected value
   dt[C_mV_residual > chpos_tolerance_mV, exclude := TRUE]
   # add mmnt-specific latter deadband
   dt[, start_final_deadband := n - final_deadband_width, by = mmnt_id]
@@ -497,14 +498,15 @@ remove_deadband <- function(dt, initial_deadband_width = 150, final_deadband_wid
       # very slow on JASMIN:
       # m <- lm(t ~ chi_co2 + chi_ch4 + chi_n2o + chi_h2o + mmnt_id, w = w, data = dt) # nolint
       dt[, t_pred := predict(lm(form, w = w, data = .SD)), by = mmnt_id]
-      dt[, t_resid := abs(scale(resid(lm(form, w = w, data = .SD)))), by = mmnt_id]
+      dt[, t_resid := abs(resid(lm(form, w = w, data = .SD))), by = mmnt_id]
     } else { ## WIP would the above fail with only one mmnt_id? just in case:
       dt[, t_pred := predict(lm(form, w = w, data = .SD))]
-      dt[, t_resid := abs(scale(resid(lm(form, w = w, data = .SD))))]
+      dt[, t_resid := abs(resid(lm(form, w = w, data = .SD)))]
     }
     # Leave middle half of the data untouched - not deadband.
     # In the first and last quarters, exclude if residual is too high.
     dt[(t / n <= 0.25 | t / n >= 0.75) &
+    # dt[(t / n <= 0.33 | t / n >= 0.66) &
       t_resid > t_resid_threshold, exclude := TRUE]
     # exclude the pre-defined deadband
     dt[t < initial_deadband_width | t > start_final_deadband,
