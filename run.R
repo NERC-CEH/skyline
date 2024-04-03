@@ -43,6 +43,6 @@ tar_visnetwork()
 # serial
 system.time(tar_make())
 # parallel
-system.time(tar_make_future(workers = 6L))
+system.time(tar_make_future(workers = 5L))
 
 use_targets()
