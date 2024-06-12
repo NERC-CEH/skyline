@@ -33,8 +33,8 @@ final_deadband_width   <- 150
 # site, experiment, and dates to process:
 site_id <- "EHD"
 expt_id <- "biochar1"
-start_date <- "2021-04-30" # "2021-05-01"
-end_date   <- "2021-06-14" # "2021-05-05"
+start_date <- "2021-05-01" # "2021-04-30" # "2021-05-01"
+end_date   <- "2021-05-05" # "2021-06-14" # "2021-05-05"
 initial_deadband_width <- 300
 final_deadband_width   <- 250
 
@@ -57,6 +57,7 @@ final_deadband_width   <- 150
 this_site_id <- site_id
 this_expt_id <- expt_id
 example_date   <- as.POSIXct(start_date)
+example_date   <- as.POSIXct(end_date)
 this_date <- example_date
 v_dates <- as.POSIXct(seq(from = as.Date(start_date), to = as.Date(end_date), by="day"))
 save_plots <- FALSE
@@ -69,11 +70,64 @@ length(l_files$v_fnames_ghg)
 length(l_files$v_fnames_pos)
 length(l_files$v_fnames_met)
 
-dt_ghg <- get_data(this_date, site_id, expt_id, data_location, l_meta,
-      method = "time fit", dryrun = FALSE, save_plots = save_plots)
-l_out <- get_data(v_dates, site_id, expt_id, data_location, l_meta,
-      method = "time fit", dryrun = TRUE, save_plots = save_plots)
-      
+dt_chi <- get_data(v_dates, this_site_id = "EHD", this_expt_id = "biochar1",
+      l_meta,
+      seq_id_to_plot = seq_id_to_plot,
+      method = method, dryrun = FALSE, save_plots = save_plots,
+      write_all = write_all, n_min = n_min)
+   
+dt_chi <- get_flux(dt_chi)
+
+dt_flux <- get_flux(dt_chi_all)
+dt_flux <- filter_fluxes(dt_flux, save_file = TRUE, fname = "dt_flux")
+    
+
+dts <- dt_chi[example_date == as.POSIXct(lubridate::date(datect)) & 
+  chamber_id == 2 &
+  seq_id <= 24]
+
+dts <- dt_chi[as.POSIXct("2021-05-03") == as.POSIXct(lubridate::date(datect)) &
+   chamber_id == 11 &
+  seq_id == 7]
+table(dts$mmnt_id)
+dts[mmnt_id == "2021-05-04_03_02"]
+dts <- get_flux(dts)
+dts[exclude == FALSE]
+
+dt[concave_up == TRUE, coef(lm(form, w = w, data = .SD))[2], by = mmnt_id]
+dt[concave_up == TRUE, dchi_dt := coef(lm(form, w = w, data = .SD))[2], by = mmnt_id]
+dt[concave_up == TRUE, .(dchi_dt)]
+summary(dts[exclude == FALSE])
+any(is.na(dt[concave_up == TRUE, dchi_dt]))
+any(is.na(dt[concave_up == FALSE, dchi_dt]))
+
+
+plot_chi(dts[as.POSIXct("2021-05-04") == as.POSIXct(lubridate::date(datect))], gas_name = "co2")
+dts <- get_gamdiff(dts)
+plot_chi_co2_with_rmse(dts, n = 12)
+plot_chi_with_gamdiff(dts[as.POSIXct("2021-05-02") == as.POSIXct(lubridate::date(datect))], n = 9)
+plot_chi(dts, gas_name = "ch4")
+plot_chi(dts, gas_name = "n2o")
+
+dt_flux <- dts[exclude == FALSE, .SD[1], by = mmnt_id]
+with(dt_flux, plot(gamdiff, sigma_lm))
+
+dts <- dt_chi[example_date == as.POSIXct(lubridate::date(datect)) & 
+  chamber_id == 2 &
+  seq_id <= 2]
+dts <- get_flux(dts[exclude == FALSE])
+plot_chi(dts[exclude == FALSE], gas_name = "co2")
+
+dts <- dt_chi[example_date == as.POSIXct(lubridate::date(datect)) & 
+  chamber_id == 3 &
+  seq_id <= 24]
+dts[, start_t := which(exclude == FALSE, arr.ind=TRUE)[1], by = mmnt_id]
+dts[, t := t - start_t]
+
+dts <- get_flux(dts)
+plot_chi(dts, gas_name = "co2")
+dts[, .SD[1], by = mmnt_id]
+
 dt_unfilt <- remove_deadband(dt_ghg, method = "time fit", dryrun = TRUE)
 
 dt_chi <- tar_read(dt_chi)

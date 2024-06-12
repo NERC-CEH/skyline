@@ -2,6 +2,8 @@ here::i_am("./run.R")
 library(targets)
 source("_targets.R")
 tar_outdated()
+tar_outdated(starts_with("dt_"))
+system.time(tar_make(starts_with("dt_")))
 system.time(tar_make())
 tar_load_everything(strict = FALSE)
 p_unfilt
@@ -44,5 +46,7 @@ tar_visnetwork()
 system.time(tar_make())
 # parallel
 system.time(tar_make_future(workers = 5L))
+system.time(tar_make_future(workers = 5L))
+system.time(tar_make_future(starts_with("l_"), workers = 5L))
 
 use_targets()

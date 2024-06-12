@@ -14,6 +14,7 @@ set.seed(448)
 # Set target options:
 v_pkgs = c("here", "fs", "data.table", "readxl", "units", "qs", "ggplot2",
   "lubridate", "dplyr", "future", "viridis", "lme4", "ggeffects", 
+  # "mgcv", "ggpmisc")
   "photobiology", "mgcv", "ggpmisc")
 tar_option_set(
   # envir = getNamespace("skyline"), use source code from installed package
@@ -35,8 +36,8 @@ data.table::getDTthreads()
 # default to process all dates in experiment
 v_dates <- NULL
 # or uncomment lines below to specify a subset of dates
-# start_date <-  "2023-05-11"
-# end_date   <-  "2023-08-12"
+# start_date <-  "2021-05-01"
+# end_date   <-  "2021-05-05"
 # v_dates <- as.POSIXct(seq(from = as.Date(start_date), to = as.Date(end_date), by="day"))
 
 seq_id_to_plot <- 5   # default to 1 as night/dark flux so should be clear if something is wrong with deadbands
@@ -46,7 +47,7 @@ write_all <- FALSE   # combine files for days processes
 n_min <- 100
 method <-  "time fit"  # "time fit" or "specified deadband only"
 # dryrun FALSE = remove deadbands and calculate fluxes, TRUE = plots showing deadbands for visual checking before calculating fluxes
-dryrun <- TRUE
+dryrun <- FALSE
 
 #### list of targets: ####
 list(
@@ -57,7 +58,7 @@ list(
   ),
 
   tar_target(
-    name = l_out_yield1,
+    name = dt_chi_yield1,
     command = get_data(v_dates, this_site_id = "EHD", this_expt_id = "yield1",
       l_meta,
       seq_id_to_plot = seq_id_to_plot,
@@ -66,7 +67,7 @@ list(
   ),
 
   tar_target(
-    name = l_out_split1,
+    name = dt_chi_split1,
     command = get_data(v_dates, this_site_id = "EHD", this_expt_id = "split1",
       l_meta,
       seq_id_to_plot = seq_id_to_plot,
@@ -75,7 +76,7 @@ list(
   ),
 
   tar_target(
-    name = l_out_biochar1,
+    name = dt_chi_biochar1,
     command = get_data(v_dates, this_site_id = "EHD", this_expt_id = "biochar1",
       l_meta,
       seq_id_to_plot = seq_id_to_plot,
@@ -84,7 +85,7 @@ list(
   ),
 
   tar_target(
-    name = l_out_digestate1,
+    name = dt_chi_digestate1,
     command = get_data(v_dates, this_site_id = "EHD", this_expt_id = "digestate1",
       l_meta,
       seq_id_to_plot = seq_id_to_plot,
@@ -93,7 +94,7 @@ list(
   ),
 
   tar_target(
-    name = l_out_diurnal1,
+    name = dt_chi_diurnal1,
     command = get_data(v_dates, this_site_id = "HRG", this_expt_id = "diurnal1",
       l_meta,
       seq_id_to_plot = seq_id_to_plot,
@@ -104,39 +105,45 @@ list(
   # take the mid-point day as an example to plot
   tar_target(
     name = example_date,
-    command = l_out_biochar1$dt_chi[floor(dim(l_out_biochar1$dt_chi)[1] / 2),
+    command = dt_chi_biochar1[floor(dim(dt_chi_biochar1)[1] / 2),
                 as.POSIXct(lubridate::date(datect))]
   ),
 
   # plot concentration against time for every mmnt sequence that day
   tar_target(
     name = p_chi_co2_biochar1,
-    command = plot_chi(l_out_biochar1$dt_chi[
+    command = plot_chi(dt_chi_biochar1[
       example_date == as.POSIXct(lubridate::date(datect))],
       gas_name = "chi_co2")
   ),
 
   # post-processing - separate script or give prefix?
   tar_target(
-    name = dt_flux_all,
-    command = rbindlist(list(l_out_biochar1$dt_flux, 
-                             l_out_yield1$dt_flux,
-                             l_out_split1$dt_flux,
-                             l_out_digestate1$dt_flux, 
-                             l_out_diurnal1$dt_flux),  fill=TRUE)
+    name = dt_chi_all,
+    command = rbindlist(list(dt_chi_biochar1, 
+                             dt_chi_yield1,
+                             dt_chi_split1,
+                             dt_chi_digestate1, 
+                             dt_chi_diurnal1),  
+                             fill=TRUE)
   ),
 
   tar_target(
-    name = dt_flux,
-    command = filter_fluxes(dt_flux_all, save_file = TRUE, fname = "dt_flux")
+    name = dt,
+    command = get_flux(dt_chi_all)
   ),
+  
+  tar_target(
+    name = dt_flux,
+    command = dt[, .SD[1], by = mmnt_id]
+  ),  
   # tar_target(
-    # name = null_1,
-    # command = qsave(dt_flux, file = here("output/dt_flux.qs"))
+    # name = dt_flux,
+    # command = filter_fluxes(dt_flux_all, save_file = TRUE, fname = "dt_flux")
   # ),
   tar_target(
-    name = dt,
-    command = finding_Nema(dt_flux, l_meta, save_file = TRUE)
+    name = null_1,
+    command = qsave(dt_flux, file = here("output/dt_flux.qs"))
   ),
 
   # biochar1
@@ -405,24 +412,24 @@ list(
   # nonlinearity filter plots
   tar_target(
     name = p_nonlinearity_biochar1,
-    command = plot_chi_with_nonlinearity(l_out_biochar1$dt_chi, save_plot = TRUE)
+    command = plot_chi_co2_with_rmse(dt[expt_id == "biochar1"], n = 9, save_plot = TRUE)
   ),
   tar_target(
     name = p_nonlinearity_split1,
-    command = plot_chi_with_nonlinearity(l_out_split1$dt_chi, save_plot = TRUE)
+    command = plot_chi_co2_with_rmse(dt[expt_id == "split1"], n = 9, save_plot = TRUE)
   ),
   tar_target(
     name = p_nonlinearity_yield1,
-    command = plot_chi_with_nonlinearity(l_out_yield1$dt_chi, save_plot = TRUE)
+    command = plot_chi_co2_with_rmse(dt[expt_id == "yield1"], n = 9, save_plot = TRUE)
   ),
   tar_target(
     name = p_nonlinearity_digestate1,
-    command = plot_chi_with_nonlinearity(l_out_digestate1$dt_chi, save_plot = TRUE)
+    command = plot_chi_co2_with_rmse(dt[expt_id == "digestate1"], n = 9, save_plot = TRUE)
   ),
-  # tar_target(
-    # name = p_nonlinearity_diurnal1,
-    # command = plot_chi_with_nonlinearity(l_out_diurnal1$dt_chi, save_plot = TRUE)
-  # ),
+  tar_target(
+    name = p_nonlinearity_diurnal1,
+    command = plot_chi_co2_with_rmse(dt[expt_id == "diurnal1"], n = 9, save_plot = TRUE)
+  ),
   # manuscript file:
   tar_render(manuscript_pdf, here("manuscripts", "skyline_analysis.Rmd"))
 )
