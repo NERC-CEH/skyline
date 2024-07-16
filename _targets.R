@@ -134,13 +134,13 @@ list(
   ),
   
   tar_target(
-    name = dt_flux,
+    name = dt_flux_unfilt,
     command = dt[, .SD[1], by = mmnt_id]
   ),  
-  # tar_target(
-    # name = dt_flux,
-    # command = filter_fluxes(dt_flux_all, save_file = TRUE, fname = "dt_flux")
-  # ),
+  tar_target(
+    name = dt_flux,
+    command = filter_fluxes(dt_flux_unfilt, save_file = FALSE, fname = "dt_flux")
+  ),
   tar_target(
     name = null_1,
     command = qsave(dt_flux, file = here("output/dt_flux.qs"))

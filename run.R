@@ -1,10 +1,25 @@
 here::i_am("./run.R")
 library(targets)
+# tar_config_set(script = "_targets.R", store = "_targets", project = "main")
+# tar_config_set(script = "_targets_biochar1.R", store = "_targets_biochar1", project = "biochar1")
+# tar_config_set(script = "_targets_digestate1.R", store = "_targets_digestate1", project = "digestate1")
+
 source("_targets.R")
+
+Sys.setenv(TAR_PROJECT = "main")
 tar_outdated()
+
+Sys.setenv(TAR_PROJECT = "biochar1")
+tar_outdated()
+tar_make()
+tar_read(test)
+
 tar_outdated(starts_with("dt_"))
-system.time(tar_make(starts_with("dt_")))
+tar_outdated(starts_with("manuscript_"))
+system.time(tar_make(starts_with("p_")))
+system.time(tar_make(starts_with("manuscript_")))
 system.time(tar_make())
+tar_load(starts_with("p_"))
 tar_load_everything(strict = FALSE)
 p_unfilt
 ggsave(p_unfilt,  file = "output/HRG/diurnal1/p_unfilt__2023-06-01.png")

@@ -1,0 +1,9 @@
+main:
+  script: _targets.R
+  store: _targets
+biochar1:
+  script: _targets_biochar1.R
+  store: _targets_biochar1
+digestate1:
+  script: _targets_digestate1.R
+  store: _targets_digestate1
