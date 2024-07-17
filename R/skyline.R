@@ -521,8 +521,8 @@ plot_data_unfiltered <- function(dt_unfilt, gas_name = "chi_co2",
   return(p)
 }
 
-plot_chi <- function(dt, gas_name = "n2o") {
-  p <- ggplot(dt, aes(t, get(paste0("chi_", gas_name)), colour = as.factor(exclude), group = mmnt_id))
+plot_chi <- function(dt, gas_name = "chi_n2o") {
+  p <- ggplot(dt, aes(t, get(paste0(gas_name)), colour = as.factor(exclude), group = mmnt_id))
   # p <- p + geom_point(alpha = 0.1) ## WIP setting alpha adds computation time - try without
   p <- p + geom_point() ## WIP setting alpha adds computation time - try without
   # p <- p + geom_line(aes(y = get(paste0("chi_pred_", gas_name))), colour = "black")
