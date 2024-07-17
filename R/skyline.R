@@ -351,7 +351,7 @@ get_data <- function(v_dates = NULL, this_site_id = "HRG",
       t_resid_threshold = dt_band$t_resid_threshold,
       method = method, remove_deadband = FALSE)
     # re-check how many data are left; count only non-excluded points
-    dt[, n_filt := sum(!exclude), by = mmnt_id] 
+    dt[, n_filt := sum(!exclude), by = mmnt_id]
     # if too few data left (100?), or too many (ch position sensor stuck)
     # then remove the whole measurement sequence
     dt <- dt[n_filt > n_min & n_filt < 1800]
@@ -415,7 +415,7 @@ get_data <- function(v_dates = NULL, this_site_id = "HRG",
   dt_chi  <- rbindlist(l_dt_chi, fill=TRUE)
   # remove days during experiment when no flux measurements
   dt_chi <- dt_chi[!is.na(site_id)]
-  
+
   if (write_all & !dryrun) {
     # save to files
     fname <- paste0(pname_csv, "/dt_chi_", lubridate::date(v_dates[1]), "_",
@@ -455,7 +455,7 @@ filter_data <- function(site_id, expt_id, l_meta){
 
 identify_deadband <- function(dt, initial_deadband_width = 150, final_deadband_width = 150,
                             chpos_tolerance_mV = 6, t_resid_threshold = 1,
-                            method = c("time fit", "specified deadband only"), 
+                            method = c("time fit", "specified deadband only"),
                             remove_deadband = FALSE) {
 
   dt[, exclude := FALSE]
@@ -484,14 +484,14 @@ identify_deadband <- function(dt, initial_deadband_width = 150, final_deadband_w
   }
   # set weight to zero if excluded
   dt[exclude == TRUE, w := 0]
-  
+
   # shift time to start after deadband - affects nonlinear fit parameters
   # get first row in mmnt where data not excluded
   dt[, start_t := which(exclude == FALSE, arr.ind=TRUE)[1], by = mmnt_id]
   dt[, t := t - start_t]
   # remove un-needed variables
   dt[, start_t := NULL]
-  
+
   # if removing the deadband, subset the data to only those with exclude = FALSE
   if (remove_deadband) dt <- dt[exclude == FALSE]
   return(dt)
@@ -525,8 +525,8 @@ plot_chi <- function(dt, gas_name = "n2o") {
   p <- ggplot(dt, aes(t, get(paste0("chi_", gas_name)), colour = as.factor(exclude), group = mmnt_id))
   # p <- p + geom_point(alpha = 0.1) ## WIP setting alpha adds computation time - try without
   p <- p + geom_point() ## WIP setting alpha adds computation time - try without
-  p <- p + geom_line(aes(y = get(paste0("chi_pred_", gas_name))), colour = "black")
-  p <- p + geom_line(aes(y = get(paste0("chi_pred_", gas_name))), colour = "red")
+  # p <- p + geom_line(aes(y = get(paste0("chi_pred_", gas_name))), colour = "black")
+  # p <- p + geom_line(aes(y = get(paste0("chi_pred_", gas_name))), colour = "red")
   p <- p + ylab(gas_name)
   p <- p + facet_wrap(~ seq_id)
   # alternative option - add save_plot argument
@@ -957,14 +957,14 @@ plot_diurnal <- function(dt_flux, split_by_day = FALSE, split_by_expt = FALSE) {
     dt_flux[, f_n2o_scaled   := scale(f_n2o)  ]
     dt_flux[, TA_scaled      := scale(TA)     ]
     dt_flux[, TSoil_scaled      := scale(TSoil)     ]
-    dt_flux[, PPFD_IN_scaled := scale(PPFD_IN)]  
+    dt_flux[, PPFD_IN_scaled := scale(PPFD_IN)]
   }
-  
+
   dt_flux[, h := lubridate::hour(datect) + lubridate::minute(datect) / 60]
 
   p <- ggplot(dt_flux, aes(h, PPFD_IN_scaled, colour = Variable))
   p <- p + scale_colour_manual(name="Variable",
-    values = c("PPFD" = "yellow", "TA" = "red",  "TSoil" = "orange", 
+    values = c("PPFD" = "yellow", "TA" = "red",  "TSoil" = "orange",
                "CO2 flux" = "green", "N2O flux" = "blue"))
   p <- p + geom_hline(yintercept = 0)
   p <- p + stat_smooth(aes(colour = "PPFD"), method = "gam")
@@ -998,9 +998,9 @@ plot_chi_co2_with_rmse <- function(dt, n = 0, add_gam = FALSE, save_plot = FALSE
     dt <- dt[mmnt_id %in% v_mmnt_id]
   }
 
-  if (add_gam) dt[exclude == FALSE, chi_pred_gam := predict(gam(chi_co2 ~ s(t), 
+  if (add_gam) dt[exclude == FALSE, chi_pred_gam := predict(gam(chi_co2 ~ s(t),
     weights = w/mean(w), data = .SD)), by = mmnt_id]
-   
+
   p <- ggplot(dt[exclude == FALSE], aes(t, chi_co2, colour = rmse_f_co2, group = mmnt_id, weight = w))
   p <- p + geom_point() ## WIP setting alpha adds computation time - try without
   p <- p + geom_line(aes(y = chi_pred_co2), colour = "red", linewidth = 1)
@@ -1029,16 +1029,16 @@ get_flux <- function(dt) {
   return(dt)
 }
 
-calc_flux_nl <- function(dt, gas_name = "co2", use_STP = TRUE, PA = 1000, 
+calc_flux_nl <- function(dt, gas_name = "co2", use_STP = TRUE, PA = 1000,
                       TA = 15, use_weights = TRUE) {
-  
+
   # make variable names
   flux_var_name  <- paste0("f_",     gas_name)
   sigma_var_name <- paste0("sigma_f_", gas_name)
   rmse_var_name <- paste0("rmse_f_", gas_name)
   r2_var_name <- paste0("r2_f_", gas_name)
   pred_var_name <- paste0("chi_pred_", gas_name)
-  
+
   # calculate mean air density for each mmnt if we have the specific data
   if (use_STP) {
     rho <- PA * 100 / (8.31447 * (TA + 273.15))
@@ -1046,14 +1046,14 @@ calc_flux_nl <- function(dt, gas_name = "co2", use_STP = TRUE, PA = 1000,
     dt[, rho := PA * 100 / (8.31447 * (TA + 273.15))]
   }
   if (!use_weights) dt[, w := 1]
-  
+
   form_ln <- formula(paste0("chi_", gas_name, " ~ t"))
   form_nl <- formula(paste0("chi_", gas_name, " ~ t + I(t^2)"))
-  
+
   # identify whether nonlinear fit is convex (t^2 term negative) or concave_up  (t^2 term positive)
   dt[, dchi_dt_2 := coef(lm(form_nl, w = w, data = .SD))[3], by = mmnt_id]
   dt[, concave_up := FALSE]  # do nonlinear fit by default
-  dt[dchi_dt_2 > 0, concave_up := TRUE]    
+  dt[dchi_dt_2 > 0, concave_up := TRUE]
 
   # do nonlinear fit if not concave_up
   # we need the if block in case there are no cases, which gives an error
@@ -1064,7 +1064,7 @@ calc_flux_nl <- function(dt, gas_name = "co2", use_STP = TRUE, PA = 1000,
     dt[concave_up == FALSE, (flux_var_name) := dchi_dt        * rho * volume_m3 / area_m2]
     dt[concave_up == FALSE, (sigma_var_name) := sigma_dchi_dt * rho * volume_m3 / area_m2]
     dt[concave_up == FALSE, (r2_var_name) := summary(lm(form, w = w, data = .SD))$r.squared, by = mmnt_id]
-    dt[concave_up == FALSE, (rmse_var_name) := summary(lm(form, w = w, data = .SD))$sigma, by = mmnt_id]    
+    dt[concave_up == FALSE, (rmse_var_name) := summary(lm(form, w = w, data = .SD))$sigma, by = mmnt_id]
     dt[concave_up == FALSE, (pred_var_name) := predict(lm(form, w = w, data = .SD)), by = mmnt_id]
   }
 
@@ -1086,9 +1086,9 @@ calc_flux_nl <- function(dt, gas_name = "co2", use_STP = TRUE, PA = 1000,
   return(dt)
 }
 
-calc_flux_ln <- function(dt, gas_name = "co2", use_STP = TRUE, PA = 1000, 
+calc_flux_ln <- function(dt, gas_name = "co2", use_STP = TRUE, PA = 1000,
                       TA = 15, use_weights = TRUE) {
-  
+
   # make variable names
   flux_var_name  <- paste0("f_",        gas_name)
   sigma_var_name <- paste0("sigma_f_",  gas_name)
@@ -1103,7 +1103,7 @@ calc_flux_ln <- function(dt, gas_name = "co2", use_STP = TRUE, PA = 1000,
     dt[, rho := PA * 100 / (8.31447 * (TA + 273.15))]
   }
   if (!use_weights) dt[, w := 1]
-  
+
   form <- formula(paste0("chi_", gas_name, " ~ t"))
   dt[, dchi_dt   := coef(lm(form, w = w, data = .SD))[2], by = mmnt_id]
   dt[, sigma_dchi_dt := summary(lm(form, w = w, data = .SD))$coefficients[2, 2], by = mmnt_id]

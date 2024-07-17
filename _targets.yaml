@@ -7,3 +7,6 @@ biochar1:
 digestate1:
   script: _targets_digestate1.R
   store: _targets_digestate1
+processing_only:
+  script: _targets_processing_only.R
+  store: _targets_processing_only

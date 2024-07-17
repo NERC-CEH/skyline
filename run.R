@@ -3,6 +3,7 @@ library(targets)
 # tar_config_set(script = "_targets.R", store = "_targets", project = "main")
 # tar_config_set(script = "_targets_biochar1.R", store = "_targets_biochar1", project = "biochar1")
 # tar_config_set(script = "_targets_digestate1.R", store = "_targets_digestate1", project = "digestate1")
+# tar_config_set(script = "_targets_processing_only.R", store = "_targets_processing_only", project = "processing_only")
 
 source("_targets.R")
 
@@ -33,6 +34,14 @@ p_chi_n2o
 p_flux_co2
 p_flux_ch4
 p_flux_n2o
+
+
+# processing only - select experiment in _targets file
+Sys.setenv(TAR_PROJECT = "processing_only")
+tar_outdated()
+tar_make(starts_with("dt_"))
+
+
 
 # for debugging
 lapply(v_pkgs, require, character.only = TRUE)
