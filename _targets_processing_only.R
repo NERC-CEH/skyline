@@ -28,8 +28,8 @@ data.table::getDTthreads()
 
 #### SPECIFY ####
 # site, experiment, and dates to process:
-site_id <- "EHD"
-expt_id <- "digestate1"
+site_id <- "PDF"
+expt_id <- "mix1"
 
 # default to process all dates in experiment
 v_dates <- NULL
@@ -39,13 +39,13 @@ v_dates <- NULL
 # v_dates <- as.POSIXct(seq(from = as.Date(start_date), to = as.Date(end_date), by="day"))
 
 seq_id_to_plot <- 1   # default to 1 as night/dark flux so should be clear if something is wrong with deadbands
-save_plots <- TRUE   # save plots for all gases containing every flux per chamber each day
+save_plots <- FALSE   # save plots for all gases containing every flux per chamber each day
 write_all <- FALSE   # combine files for days processes
-diagnostic_plots <- FALSE
+diagnostic_plots <- TRUE
 
 n_min <- 100
 method <-  "time fit"  # "time fit" or "specified deadband only"
-dryrun <- FALSE  # FALSE = remove deadbands and calculate fluxes, TRUE = plots showing deadbands for visual checking before calculating fluxes
+# dryrun <- FALSE  # FALSE = remove deadbands and calculate fluxes, TRUE = plots showing deadbands for visual checking before calculating fluxes
 
 
 
@@ -63,115 +63,70 @@ dryrun <- FALSE  # FALSE = remove deadbands and calculate fluxes, TRUE = plots s
     tar_target(
       name = dt_chi,
       command = get_data(v_dates, this_site_id = site_id, this_expt_id = expt_id,
-                         l_meta,seq_id_to_plot = seq_id_to_plot,
-                         method = method, dryrun = dryrun, save_plots = save_plots,
+                         l_meta,seq_id_to_plot = seq_id_to_plot, diagnostic_plots = diagnostic_plots,
+                         method = method, save_plots = save_plots,
                          write_all = write_all, n_min = n_min)
-    ),
-
-    # take the mid-point day as an example to plot
-    tar_target(
-      name = example_date,
-      command = dt_chi[floor(dim(dt_chi_biochar1)[1] / 2),
-                                as.POSIXct(lubridate::date(datect))]
-    ),
-
-    # plot concentration against time for every mmnt sequence that day
-    tar_target(
-      name = p_chi_co2,
-      command = plot_chi(dt_chi[
-        example_date == as.POSIXct(lubridate::date(datect))],
-        gas_name = "chi_co2")
     ),
 
     tar_target(
       name = dt,
-      command = get_flux(dt_chi)
+      command = get_flux(dt_chi, save_file = TRUE)
+    ),
+
+    tar_target(
+      name = dt_flux_unfilt,
+      command = get_flux_condensed(dt, this_site_id = site_id, this_expt_id = expt_id)
+
     ),
 
     tar_target(
       name = dt_flux,
-      command = dt[, .SD[1], by = mmnt_id]
+      command = filter_fluxes(dt_flux_unfilt, save_file = TRUE, fname = paste0(site_id, "/", expt_id, "/", "dt_flux"))
     ),
 
-  ## to combine all fluxes removing bad data and filtering ****
-  # tar_target(
-  #   name = final_out,
-  #   command = final_fluxes(site_id, expt_id, l_meta)
-  # )
-
-
-  # ## for plotting the linear fit
-  # ,
-  # # take the first day of dates processed as an example to plot
-  # tar_target(
-  #   name = example_date,
-  #   command = l_out$dt_chi[1, as.POSIXct(lubridate::date(datect))]
-  # ),
-  # # plot concentration against time with linear fit for every mmnt sequence that day
-  # tar_target(
-  #   name = p_lm_co2,
-  #   command = plot_chi_lm(l_out$dt_chi[
-  #     example_date == as.POSIXct(lubridate::date(datect))],
-  #     gas_name = "chi_co2")
-  # ),
-  # tar_target(
-  #   name = p_lm_ch4,
-  #   command = plot_chi_lm(l_out$dt_chi[
-  #     example_date == as.POSIXct(lubridate::date(datect))],
-  #     gas_name = "chi_ch4")
-  # ),
-  # tar_target(
-  #   name = p_lm_n2o,
-  #   command = plot_chi_lm(l_out$dt_chi[
-  #     example_date == as.POSIXct(lubridate::date(datect))],
-  #     gas_name = "chi_n2o")
-  # )
-
-
+    # tar_target(
+    #   name = null_1,
+    #   command = qsave(dt_flux, file = here("output/dt_flux.qs"))
+    # ),
 
   ## post-processing plots
-  # ,
+
   # tar_target(
-  # name = dt_flux,
-  # command = combine_fluxes(site_id, expt_id)   # or filter_fluxes
-  # )
-  # ,
-  tar_target(
-  name = p_flux_co2,
-  command = plot_flux(dt_flux, flux_name = "f_co2",
-  sigma_name = "sigma_f_co2", site_id, expt_id,
-  mult = 1, y_min = -25, y_max = 25)
-  ),
-  tar_target(
-  name = p_flux_ch4,
-  command = plot_flux(dt_flux, flux_name = "f_ch4",
-  sigma_name = "sigma_f_ch4", site_id, expt_id,
-  mult = 1000, y_min = -5, y_max = 5)
-  ),
-  tar_target(
-  name = p_flux_n2o,
-  command = plot_flux(dt_flux, flux_name = "f_n2o",
-  sigma_name = "sigma_f_n2o", site_id, expt_id,
-  mult = 1000, y_min = -2, y_max = 10)
-  ),
-  tar_target(
-  name = p_flux_n2o_T,
-  command = plot_flux_vs_xvar(dt_flux, flux_name = "f_n2o",
-                              sigma_name = "sigma_f_n2o", xvar_name = "TSoil",
-                              colour_name = "chamber_id", facet_name = "trmt_id",
-                              colour_is_factor = TRUE, rows_only = TRUE,
-                              mult = 1000)
-  ),
-  tar_target(
-  name = p_flux_n2o_with_Nappl,
-  command = plot_n2o_flux(dt_flux, flux_name = "f_n2o",
-  sigma_name = "sigma_f_n2o", this_site_id = "EHD", this_expt_id = "digestate1",
-  l_meta, mult = 1000, y_min = -2, y_max = 10)
-  ),
+  # name = p_flux_co2,
+  # command = plot_flux(dt_flux, flux_name = "f_co2",
+  # sigma_name = "sigma_f_co2", site_id, expt_id,
+  # mult = 1, y_min = -25, y_max = 25)
+  # ),
+  # tar_target(
+  # name = p_flux_ch4,
+  # command = plot_flux(dt_flux, flux_name = "f_ch4",
+  # sigma_name = "sigma_f_ch4", site_id, expt_id,
+  # mult = 1000, y_min = -5, y_max = 5)
+  # ),
+  # tar_target(
+  # name = p_flux_n2o,
+  # command = plot_flux(dt_flux, flux_name = "f_n2o",
+  # sigma_name = "sigma_f_n2o", site_id, expt_id,
+  # mult = 1000, y_min = -2, y_max = 10)
+  # ),
+  # tar_target(
+  # name = p_flux_n2o_T,
+  # command = plot_flux_vs_xvar(dt_flux, flux_name = "f_n2o",
+  #                             sigma_name = "sigma_f_n2o", xvar_name = "TSoil",
+  #                             colour_name = "chamber_id", facet_name = "trmt_id",
+  #                             colour_is_factor = TRUE, rows_only = TRUE,
+  #                             mult = 1000)
+  # ),
+  # tar_target(
+  # name = p_flux_n2o_with_Nappl,
+  # command = plot_n2o_flux(dt_flux, flux_name = "f_n2o",
+  # sigma_name = "sigma_f_n2o",
+  # l_meta, mult = 1000, y_min = -2, y_max = 10)
+  # ),
   tar_target(
   name = p_flux_n2o_diurnal,
   command = plot_n2o_flux_diurnal(dt_flux, flux_name = "f_n2o",
-  sigma_name = "sigma_f_n2o", this_site_id = "EHD", this_expt_id = "digestate1",
+  sigma_name = "sigma_f_n2o",
   mult = 1000, y_min = -2, y_max = 2.5)
   ),
   tar_target(
@@ -182,7 +137,7 @@ dryrun <- FALSE  # FALSE = remove deadbands and calculate fluxes, TRUE = plots s
   # nonlinearity filter plots
   tar_target(
     name = p_nonlinearity,
-    command = plot_chi_co2_with_rmse(dt, n = 9, save_plot = TRUE)
+    command = plot_chi_co2_with_rmse(dt, n = 20, save_plot = TRUE)
   # ),
 
   # # manuscript file:

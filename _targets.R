@@ -48,7 +48,7 @@ write_all <- FALSE   # combine files for days processes
 n_min <- 100
 method <-  "time fit"  # "time fit" or "specified deadband only"
 # dryrun FALSE = remove deadbands and calculate fluxes, TRUE = plots showing deadbands for visual checking before calculating fluxes
-dryrun <- FALSE
+# dryrun <- FALSE
 
 #### list of targets: ####
 list(
@@ -63,7 +63,7 @@ list(
     command = get_data(v_dates, this_site_id = "EHD", this_expt_id = "yield1",
       l_meta,
       seq_id_to_plot = seq_id_to_plot,
-      method = method, dryrun = dryrun, save_plots = save_plots,
+      method = method,  save_plots = save_plots,
       write_all = write_all, n_min = n_min)
   ),
 
@@ -72,7 +72,7 @@ list(
     command = get_data(v_dates, this_site_id = "EHD", this_expt_id = "split1",
       l_meta,
       seq_id_to_plot = seq_id_to_plot,
-      method = method, dryrun = dryrun, save_plots = save_plots,
+      method = method,  save_plots = save_plots,
       write_all = write_all, n_min = n_min)
   ),
 
@@ -81,7 +81,7 @@ list(
     command = get_data(v_dates, this_site_id = "EHD", this_expt_id = "biochar1",
       l_meta,
       seq_id_to_plot = seq_id_to_plot,
-      method = method, dryrun = dryrun, save_plots = save_plots,
+      method = method,  save_plots = save_plots,
       write_all = write_all, n_min = n_min)
   ),
 
@@ -90,7 +90,7 @@ list(
     command = get_data(v_dates, this_site_id = "EHD", this_expt_id = "digestate1",
       l_meta,
       seq_id_to_plot = seq_id_to_plot,
-      method = method, dryrun = dryrun, save_plots = save_plots,
+      method = method,  save_plots = save_plots,
       write_all = write_all, n_min = n_min)
   ),
 
@@ -99,7 +99,7 @@ list(
     command = get_data(v_dates, this_site_id = "HRG", this_expt_id = "diurnal1",
       l_meta,
       seq_id_to_plot = seq_id_to_plot,
-      method = method, dryrun = dryrun, save_plots = save_plots,
+      method = method,  save_plots = save_plots,
       write_all = write_all, n_min = n_min)
   ),
 
