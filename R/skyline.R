@@ -848,6 +848,24 @@ filter_fluxes <- function(dt, save_file = FALSE, fname = "dt_flux") {
   return(dt)
 }
 
+filter_fluxes2 <- function(dt, l_meta, save_file = FALSE, fname = "dt_flux") {
+  # remove days during experiment when no flux measurements
+  dt <- dt[!is.na(site_id)]
+  dt_expt <- l_meta$dt_expt[
+    dt$site_id[1] == site_id &
+      dt$expt_id[1] == expt_id]
+  rmse_threshold <- dt_expt$rmse_threshold
+  # # crude filtering of extreme outliers; units of umol/m2/s
+  # # add thresholds as arguments
+  dt <- dt[rmse_f_co2 < rmse_threshold]
+  # dt <- dt[f_co2 > -50 & f_co2 < 50]
+  # dt <- dt[f_n2o > -0.1 & f_n2o < 0.1]
+  # dt <- dt[rmse_f_n2o < 0.021]
+  if (save_file) fwrite(dt, file = here("output", dt$site_id[1], dt$expt_id[1], paste0(fname, ".csv")))
+  # if (save_file)  qsave(dt, file = here("output", paste0(fname, ".qs")))
+  return(dt)
+}
+
 plot_means_by_trmt <- function(dt, flux_name = "f_n2o",
                               show_raw = TRUE,
                               by_chamber = TRUE,

@@ -28,19 +28,19 @@ data.table::getDTthreads()
 
 #### SPECIFY ####
 # site, experiment, and dates to process:
-site_id <- "PDF"
-expt_id <- "mix1"
+site_id <- "EHD"
+expt_id <- "split1"
 
 # default to process all dates in experiment
 v_dates <- NULL
 # or uncomment lines below to specify a subset of dates
-# start_date <-  "2023-05-11"
-# end_date   <-  "2023-08-12"
+# start_date <-  "2023-07-02"
+# end_date   <-  "2023-07-06"
 # v_dates <- as.POSIXct(seq(from = as.Date(start_date), to = as.Date(end_date), by="day"))
 
 seq_id_to_plot <- 1   # default to 1 as night/dark flux so should be clear if something is wrong with deadbands
-save_plots <- FALSE   # save plots for all gases containing every flux per chamber each day
-write_all <- FALSE   # combine files for days processes
+save_plots <- TRUE   # save plots for all gases containing every flux per chamber each day
+write_all <- FALSE   # combine files for days processed
 diagnostic_plots <- TRUE
 
 n_min <- 100
@@ -81,7 +81,7 @@ method <-  "time fit"  # "time fit" or "specified deadband only"
 
     tar_target(
       name = dt_flux,
-      command = filter_fluxes(dt_flux_unfilt, save_file = TRUE, fname = paste0(site_id, "/", expt_id, "/", "dt_flux"))
+      command = filter_fluxes2(dt_flux_unfilt, l_meta, save_file = TRUE, fname = "dt_flux")
     ),
 
     # tar_target(
@@ -126,7 +126,7 @@ method <-  "time fit"  # "time fit" or "specified deadband only"
   tar_target(
   name = p_flux_n2o_diurnal,
   command = plot_n2o_flux_diurnal(dt_flux, flux_name = "f_n2o",
-  sigma_name = "sigma_f_n2o",
+  sigma_name = "sigma_f_n2o", this_site_id = site_id, this_expt_id = expt_id,
   mult = 1000, y_min = -2, y_max = 2.5)
   ),
   tar_target(
@@ -136,8 +136,8 @@ method <-  "time fit"  # "time fit" or "specified deadband only"
 
   # nonlinearity filter plots
   tar_target(
-    name = p_nonlinearity,
-    command = plot_chi_co2_with_rmse(dt, n = 20, save_plot = TRUE)
+    name = dt_p_nonlinearity,
+    command = plot_chi_co2_with_rmse(dt, n = 50, save_plot = TRUE)
   # ),
 
   # # manuscript file:
