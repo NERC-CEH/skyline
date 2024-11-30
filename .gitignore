@@ -4,6 +4,7 @@
 inst/doc
 data-raw/raw
 output
+output_Oct2023
 vignettes/*_cache/
 _targets/
 data-raw/skyline_meta-data - Copy.xlsx
@@ -13,3 +14,7 @@ README.html
 scratch.txt
 data-raw/ch_voltage_to_ID.xlsx
 data-raw/timing.xlsx
+*.png
+manuscripts/
+_targets_0/
+Rplots.pdf

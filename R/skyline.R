@@ -309,8 +309,9 @@ get_data <- function(v_dates = NULL, this_site_id = "HRG",
     dt[, seq_id  := rleid(chamber_id)] # enumerate the sequence, run-length id, through the column chamber_id each time it changes the r.leid +1
     # then enumerate the sequence for a given chamber
     dt[, seq_id := rleid(seq_id), by = chamber_id]
-    # dt <- dt[chamber_id!=0] # remove rows where chamber_id
-    dt[, mmnt_id := paste(lubridate::date(dt$datect),  # create measurement id consisting of date, chamber id, and sequence id (i.e. the  second or
+
+    # create measurement id consisting of expt_id, date, chamber id, and sequence id
+    dt[, mmnt_id := paste(this_expt_id, lubridate::date(dt$datect),  
       formatC(as.numeric(as.character(chamber_id)), width = 2, format = "d", flag = "0"),
       formatC(seq_id, width = 2, format = "d", flag = "0"),     # third time that day that a measurement was taken for that chamber position)
       sep = "_")]
@@ -378,29 +379,23 @@ get_data <- function(v_dates = NULL, this_site_id = "HRG",
 
     if (save_plots) {
       if (dryrun){
-        # p <- plot_chi(dt, gas_name = "chi_h2o")
-        # fname <- paste0(pname_png_unfilt, "/h2o_", lubridate::date(this_date), ".png")
-        # ggsave(p, file = fname, type = "cairo")
-        p <- plot_chi(dt, gas_name = "chi_co2")
+        p <- plot_chi(dt, gas_name = "co2")
         fname <- paste0(pname_png_unfilt_daily, "/co2_", lubridate::date(this_date), ".png")
         ggsave(p, file = fname, type = "cairo")
-        p <- plot_chi(dt, gas_name = "chi_ch4")
+        p <- plot_chi(dt, gas_name = "ch4")
         fname <- paste0(pname_png_unfilt_daily, "/ch4_", lubridate::date(this_date), ".png")
         ggsave(p, file = fname, type = "cairo")
-        p <- plot_chi(dt, gas_name = "chi_n2o")
+        p <- plot_chi(dt, gas_name = "n2o")
         fname <- paste0(pname_png_unfilt_daily, "/n2o_", lubridate::date(this_date), ".png")
         ggsave(p, file = fname, type = "cairo")
       } else {
-          p <- plot_chi(dt, gas_name = "chi_h2o")
-          fname <- paste0(pname_png_daily, "/h2o_", lubridate::date(this_date), ".png")
-          ggsave(p, file = fname, type = "cairo")
-          p <- plot_chi(dt, gas_name = "chi_co2")
+          p <- plot_chi(dt, gas_name = "co2")
           fname <- paste0(pname_png_daily, "/co2_", lubridate::date(this_date), ".png")
           ggsave(p, file = fname, type = "cairo")
-          p <- plot_chi(dt, gas_name = "chi_ch4")
+          p <- plot_chi(dt, gas_name = "ch4")
           fname <- paste0(pname_png_daily, "/ch4_", lubridate::date(this_date), ".png")
           ggsave(p, file = fname, type = "cairo")
-          p <- plot_chi(dt, gas_name = "chi_n2o")
+          p <- plot_chi(dt, gas_name = "n2o")
           fname <- paste0(pname_png_daily, "/n2o_", lubridate::date(this_date), ".png")
           ggsave(p, file = fname, type = "cairo")
         }
@@ -525,10 +520,11 @@ plot_chi <- function(dt, gas_name = "n2o") {
   p <- ggplot(dt, aes(t, get(paste0("chi_", gas_name)), colour = as.factor(exclude), group = mmnt_id))
   # p <- p + geom_point(alpha = 0.1) ## WIP setting alpha adds computation time - try without
   p <- p + geom_point() ## WIP setting alpha adds computation time - try without
-  p <- p + geom_line(aes(y = get(paste0("chi_pred_", gas_name))), colour = "black")
-  p <- p + geom_line(aes(y = get(paste0("chi_pred_", gas_name))), colour = "red")
   p <- p + ylab(gas_name)
   p <- p + facet_wrap(~ seq_id)
+  if (paste0("chi_pred_", gas_name) %in% colnames(dt)) {
+    p <- p + geom_line(aes(y = get(paste0("chi_pred_", gas_name))), colour = "red")
+  }
   # alternative option - add save_plot argument
   # fname <- here("output", dt$site_id[1], dt$expt_id[1], "png",
                 # paste0(gas_name, "_",
@@ -830,11 +826,11 @@ filter_fluxes <- function(dt, save_file = FALSE, fname = "dt_flux") {
   # remove days during experiment when no flux measurements
   dt <- dt[!is.na(site_id)]
 
-  # # crude filtering of extreme outliers; units of umol/m2/s
-  # # add threshods as arguments
-  # dt <- dt[f_co2 > -50 & f_co2 < 50]
-  # dt <- dt[f_n2o > -0.1 & f_n2o < 0.1]
-  # dt <- dt[rmse_f_n2o < 0.021]
+  # crude filtering of extreme outliers; units of umol/m2/s
+  # add threshods as arguments
+  dt <- dt[f_co2 > -50 & f_co2 < 50]
+  dt <- dt[f_n2o > -0.1 & f_n2o < 0.1]
+  dt <- dt[rmse_f_n2o < 0.021]
   if (save_file) fwrite(dt, file = here("output", paste0(fname, ".csv")))
   if (save_file)  qsave(dt, file = here("output", paste0(fname, ".qs")))
   return(dt)
