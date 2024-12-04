@@ -8,8 +8,8 @@ source("_targets.R")
 tar_outdated()
 
 # serial
-system.time(tar_make())
+# system.time(tar_make())
 # parallel
-# system.time(tar_make_future(workers = 5L))
+system.time(tar_make_future(workers = 5L))
 
 quit(save = "no")

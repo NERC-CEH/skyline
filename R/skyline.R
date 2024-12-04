@@ -51,19 +51,42 @@ read_cs_data <- function(filename, return_option = "data") {
   }
 }
 
-read_metadata <- function(fname_meta = "data-raw/skyline_meta-data.xlsx") {
-  dt_site <- as.data.table(readxl::read_excel(fname_meta, sheet = "site"),
-    key = c("site_id"))
-  dt_expt <- as.data.table(readxl::read_excel(fname_meta, sheet = "experiment"),
-    key = c("site_id", "expt_id"))
-  dt_time <- as.data.table(readxl::read_excel(fname_meta, sheet = "analyser_time"))
-  dt_trmt <- as.data.table(readxl::read_excel(fname_meta, sheet = "treatment"))
-  dt_mgmt <- as.data.table(readxl::read_excel(fname_meta, sheet = "management_event"))
-  dt_cham <- as.data.table(readxl::read_excel(fname_meta, sheet = "chamber"))
-  dt_band <- as.data.table(readxl::read_excel(fname_meta, sheet = "deadbands"))
-  dt_badd <- as.data.table(readxl::read_excel(fname_meta, sheet = "bad_data"))
-  dt_ancl <- as.data.table(readxl::read_excel(fname_meta, sheet = "ancilliay_timeseries_byChamber"))
+convert_metadata_csv <- function(
+  fname_meta = "data-raw/skyline_meta-data.xlsx",
+  v_sheet = c(
+    "site",
+    "experiment",
+    "analyser_time",
+    "treatment",
+    "management_event",
+    "chamber",
+    "deadbands",
+    "bad_data",
+    "ancilliay_timeseries_byChamber"
+  )
+) {
+  v_fname_csv <- here("data-raw", paste0("metadata_", v_sheet, ".csv"))
+  for (i in seq_along(v_sheet)) {
+    print(paste(i, v_sheet[i]))
+    dt <- as.data.table(readxl::read_excel(fname_meta, sheet = v_sheet[i]))
+    fwrite(dt, file = v_fname_csv[i])
+  }
+  return(v_fname_csv)
+}
 
+read_metadata <- function(v_fname_csv) {
+  dt_site <- fread(v_fname_csv[1])
+  dt_expt <- fread(v_fname_csv[2])
+  dt_time <- fread(v_fname_csv[3])
+  dt_trmt <- fread(v_fname_csv[4])
+  dt_mgmt <- fread(v_fname_csv[5])
+  dt_cham <- fread(v_fname_csv[6])
+  dt_band <- fread(v_fname_csv[7])
+  dt_badd <- fread(v_fname_csv[8])
+  dt_ancl <- fread(v_fname_csv[9])
+
+  setkeyv(dt_site, "site_id")
+  setkeyv(dt_expt, c("site_id", "expt_id"))
   dt_cham[, chamber_id := as.factor(chamber_id)]
 
   return(list(
@@ -311,7 +334,7 @@ get_data <- function(v_dates = NULL, this_site_id = "HRG",
     dt[, seq_id := rleid(seq_id), by = chamber_id]
 
     # create measurement id consisting of expt_id, date, chamber id, and sequence id
-    dt[, mmnt_id := paste(this_expt_id, lubridate::date(dt$datect),  
+    dt[, mmnt_id := paste(this_expt_id, lubridate::date(dt$datect),
       formatC(as.numeric(as.character(chamber_id)), width = 2, format = "d", flag = "0"),
       formatC(seq_id, width = 2, format = "d", flag = "0"),     # third time that day that a measurement was taken for that chamber position)
       sep = "_")]
@@ -352,7 +375,7 @@ get_data <- function(v_dates = NULL, this_site_id = "HRG",
       t_resid_threshold = dt_band$t_resid_threshold,
       method = method, remove_deadband = FALSE)
     # re-check how many data are left; count only non-excluded points
-    dt[, n_filt := sum(!exclude), by = mmnt_id] 
+    dt[, n_filt := sum(!exclude), by = mmnt_id]
     # if too few data left (100?), or too many (ch position sensor stuck)
     # then remove the whole measurement sequence
     dt <- dt[n_filt > n_min & n_filt < 1800]
@@ -410,7 +433,7 @@ get_data <- function(v_dates = NULL, this_site_id = "HRG",
   dt_chi  <- rbindlist(l_dt_chi, fill=TRUE)
   # remove days during experiment when no flux measurements
   dt_chi <- dt_chi[!is.na(site_id)]
-  
+
   if (write_all & !dryrun) {
     # save to files
     fname <- paste0(pname_csv, "/dt_chi_", lubridate::date(v_dates[1]), "_",
@@ -450,7 +473,7 @@ filter_data <- function(site_id, expt_id, l_meta){
 
 identify_deadband <- function(dt, initial_deadband_width = 150, final_deadband_width = 150,
                             chpos_tolerance_mV = 6, t_resid_threshold = 1,
-                            method = c("time fit", "specified deadband only"), 
+                            method = c("time fit", "specified deadband only"),
                             remove_deadband = FALSE) {
 
   dt[, exclude := FALSE]
@@ -479,14 +502,14 @@ identify_deadband <- function(dt, initial_deadband_width = 150, final_deadband_w
   }
   # set weight to zero if excluded
   dt[exclude == TRUE, w := 0]
-  
+
   # shift time to start after deadband - affects nonlinear fit parameters
   # get first row in mmnt where data not excluded
   dt[, start_t := which(exclude == FALSE, arr.ind=TRUE)[1], by = mmnt_id]
   dt[, t := t - start_t]
   # remove un-needed variables
   dt[, start_t := NULL]
-  
+
   # if removing the deadband, subset the data to only those with exclude = FALSE
   if (remove_deadband) dt <- dt[exclude == FALSE]
   return(dt)
@@ -953,14 +976,14 @@ plot_diurnal <- function(dt_flux, split_by_day = FALSE, split_by_expt = FALSE) {
     dt_flux[, f_n2o_scaled   := scale(f_n2o)  ]
     dt_flux[, TA_scaled      := scale(TA)     ]
     dt_flux[, TSoil_scaled      := scale(TSoil)     ]
-    dt_flux[, PPFD_IN_scaled := scale(PPFD_IN)]  
+    dt_flux[, PPFD_IN_scaled := scale(PPFD_IN)]
   }
-  
+
   dt_flux[, h := lubridate::hour(datect) + lubridate::minute(datect) / 60]
 
   p <- ggplot(dt_flux, aes(h, PPFD_IN_scaled, colour = Variable))
   p <- p + scale_colour_manual(name="Variable",
-    values = c("PPFD" = "yellow", "TA" = "red",  "TSoil" = "orange", 
+    values = c("PPFD" = "yellow", "TA" = "red",  "TSoil" = "orange",
                "CO2 flux" = "green", "N2O flux" = "blue"))
   p <- p + geom_hline(yintercept = 0)
   p <- p + stat_smooth(aes(colour = "PPFD"), method = "gam")
@@ -994,9 +1017,9 @@ plot_chi_co2_with_rmse <- function(dt, n = 0, add_gam = FALSE, save_plot = FALSE
     dt <- dt[mmnt_id %in% v_mmnt_id]
   }
 
-  if (add_gam) dt[exclude == FALSE, chi_pred_gam := predict(gam(chi_co2 ~ s(t), 
+  if (add_gam) dt[exclude == FALSE, chi_pred_gam := predict(gam(chi_co2 ~ s(t),
     weights = w/mean(w), data = .SD)), by = mmnt_id]
-   
+
   p <- ggplot(dt[exclude == FALSE], aes(t, chi_co2, colour = rmse_f_co2, group = mmnt_id, weight = w))
   p <- p + geom_point() ## WIP setting alpha adds computation time - try without
   p <- p + geom_line(aes(y = chi_pred_co2), colour = "red", linewidth = 1)
@@ -1018,23 +1041,21 @@ get_flux <- function(dt) {
   dt <- calc_flux_nl(dt, gas_name = "co2")
   dt <- calc_flux_ln(dt, gas_name = "ch4")
   dt <- calc_flux_ln(dt, gas_name = "n2o")
-
-  # pname_csv <- here("output")
-  # fname <- paste0(pname_csv, "/dt_chi.csv")
-  # fwrite(dt, file = fname)
+  # we only need the first row - flux is duplicated
+  dt <- dt[, .SD[1], by = mmnt_id]
   return(dt)
 }
 
-calc_flux_nl <- function(dt, gas_name = "co2", use_STP = TRUE, PA = 1000, 
+calc_flux_nl <- function(dt, gas_name = "co2", use_STP = TRUE, PA = 1000,
                       TA = 15, use_weights = TRUE) {
-  
+
   # make variable names
   flux_var_name  <- paste0("f_",     gas_name)
   sigma_var_name <- paste0("sigma_f_", gas_name)
   rmse_var_name <- paste0("rmse_f_", gas_name)
   r2_var_name <- paste0("r2_f_", gas_name)
   pred_var_name <- paste0("chi_pred_", gas_name)
-  
+
   # calculate mean air density for each mmnt if we have the specific data
   if (use_STP) {
     rho <- PA * 100 / (8.31447 * (TA + 273.15))
@@ -1042,14 +1063,14 @@ calc_flux_nl <- function(dt, gas_name = "co2", use_STP = TRUE, PA = 1000,
     dt[, rho := PA * 100 / (8.31447 * (TA + 273.15))]
   }
   if (!use_weights) dt[, w := 1]
-  
+
   form_ln <- formula(paste0("chi_", gas_name, " ~ t"))
   form_nl <- formula(paste0("chi_", gas_name, " ~ t + I(t^2)"))
-  
+
   # identify whether nonlinear fit is convex (t^2 term negative) or concave_up  (t^2 term positive)
   dt[, dchi_dt_2 := coef(lm(form_nl, w = w, data = .SD))[3], by = mmnt_id]
   dt[, concave_up := FALSE]  # do nonlinear fit by default
-  dt[dchi_dt_2 > 0, concave_up := TRUE]    
+  dt[dchi_dt_2 > 0, concave_up := TRUE]
 
   # do nonlinear fit if not concave_up
   # we need the if block in case there are no cases, which gives an error
@@ -1060,7 +1081,7 @@ calc_flux_nl <- function(dt, gas_name = "co2", use_STP = TRUE, PA = 1000,
     dt[concave_up == FALSE, (flux_var_name) := dchi_dt        * rho * volume_m3 / area_m2]
     dt[concave_up == FALSE, (sigma_var_name) := sigma_dchi_dt * rho * volume_m3 / area_m2]
     dt[concave_up == FALSE, (r2_var_name) := summary(lm(form, w = w, data = .SD))$r.squared, by = mmnt_id]
-    dt[concave_up == FALSE, (rmse_var_name) := summary(lm(form, w = w, data = .SD))$sigma, by = mmnt_id]    
+    dt[concave_up == FALSE, (rmse_var_name) := summary(lm(form, w = w, data = .SD))$sigma, by = mmnt_id]
     dt[concave_up == FALSE, (pred_var_name) := predict(lm(form, w = w, data = .SD)), by = mmnt_id]
   }
 
@@ -1082,9 +1103,9 @@ calc_flux_nl <- function(dt, gas_name = "co2", use_STP = TRUE, PA = 1000,
   return(dt)
 }
 
-calc_flux_ln <- function(dt, gas_name = "co2", use_STP = TRUE, PA = 1000, 
+calc_flux_ln <- function(dt, gas_name = "co2", use_STP = TRUE, PA = 1000,
                       TA = 15, use_weights = TRUE) {
-  
+
   # make variable names
   flux_var_name  <- paste0("f_",        gas_name)
   sigma_var_name <- paste0("sigma_f_",  gas_name)
@@ -1099,7 +1120,7 @@ calc_flux_ln <- function(dt, gas_name = "co2", use_STP = TRUE, PA = 1000,
     dt[, rho := PA * 100 / (8.31447 * (TA + 273.15))]
   }
   if (!use_weights) dt[, w := 1]
-  
+
   form <- formula(paste0("chi_", gas_name, " ~ t"))
   dt[, dchi_dt   := coef(lm(form, w = w, data = .SD))[2], by = mmnt_id]
   dt[, sigma_dchi_dt := summary(lm(form, w = w, data = .SD))$coefficients[2, 2], by = mmnt_id]

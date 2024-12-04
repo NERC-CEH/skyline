@@ -1,0 +1,24 @@
+site_id,expt_id,trmt_id,trmt_name
+EHD,yield1,control,0% fertiliser
+EHD,yield1,Nx1,50% fertiliser
+EHD,yield1,Nx2,75% fertiliser
+EHD,yield1,Nx3,100% fertiliser
+EHD,yield1,Nx4,Clover
+EHD,yield1,Nx5,Clover + 50% fertiliser
+EHD,yield1,Nx6,Clover + 75% fertiliser
+EHD,yield1,Nx7,Compost + 50% fertiliser
+EHD,yield1,Nx8,Compost + 75% fertiliser
+EHD,digestate1,control,Standard treatment
+EHD,digestate1,D1,Digestate
+EHD,digestate1,D2,Digestate + Si
+HRG,diurnal1,control,No shading
+HRG,diurnal1,S_30,30% shading
+HRG,diurnal1,S_55,55% shading
+HRG,diurnal1,S_85,85% shading
+EHD,split1,control,skyline park
+EHD,split1,sx2,2 applications
+EHD,split1,sx4,4 applications
+EHD,split1,sx6,6 applications
+EHD,biochar1,b1,Mineral N
+EHD,biochar1,b2,Biochar + Mineral N
+EHD,biochar1,b3,Nutrisphere-N
