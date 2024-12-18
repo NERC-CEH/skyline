@@ -8,7 +8,9 @@ calc_VWC_effect|function|6e501071e49033ba|||||||||||||||
 check_data_available|function|d96afbd0d74473fc|||||||||||||||
 combine_fluxes|function|9c60e7d3fd759a68|||||||||||||||
 convert_metadata_csv|function|e75b7d9a2d713c17|||||||||||||||
-dt_flux|stem|2aa521081189dc01|697a8415d84373f3|413652ae91e51b59|2028800325||t20061.5095601852s|3574308ffe5f206e|3039776|qs|local|vector|||0.445||
+dt|stem|fe70397584962894|0dd48b4037769235|6a7e5d381d79a740|1446676327||t20073.7430555556s|2a28bae181020548|3497369|qs|local|vector|||0.036||
+dt_flux|stem|b6fb22582959b4ba|5c6b5a44be5ac61c|a99d5402bf518afe|2028800325||t20073.7018402778s|710850daa4b9ce44|3039765|qs|local|vector|||0.396||
+dt_flux_in|stem|2aa521081189dc01|697a8415d84373f3|413652ae91e51b59|-1285116841||t20073.7018402778s|3574308ffe5f206e|3039776|qs|local|vector|||0.391||
 ema|function|f00461538e24437f|||||||||||||||
 filter_data|function|13f63bbbedc4fec1|||||||||||||||
 filter_fluxes|function|23c94e176db88f6a|||||||||||||||
@@ -23,13 +25,17 @@ get_ghg_data|function|85fe13c4b806bb9f|||||||||||||||
 get_soilmet_data|function|2cd5d7a89ae2e423|||||||||||||||
 identify_deadband|function|c7343ba29759a99a|||||||||||||||
 l_meta|stem|ccfb6e5daa92d7c7|2aa11f8f126c6c79|2c530c1562a7fbd1|-466918314||t20060.751099537s|f9b46ebbad8ef0c4|5207|qs|local|vector|||2.769|multiple udunits databases present  appsjasminjaspyminiforge_envsjasr4.3mf323.11.00envsjasr4.3mf323.11.00v20240815shareudunitsudunits2.xml  usrshareudunitsudunits2.xml|
-p_bar_n2o_biochar1|stem|5e451c635995bf52|4b43139c39dc1c2f|daf7202236157fe5|-375860657||t20061.5095717593s|6b78eb0c3f8e17cd|4869881|qs|local|vector|||0.396||
-p_flux_ch4_biochar1|stem|c2ea0b14bd1a9f07|be57dc2d5184a846|8410c4152a0c22e5|-790101560||t20061.5095833333s|13c7daa696b0da4e|17874396|qs|local|vector|||0.013||
-p_flux_co2_biochar1|stem|351de26c4b7f4045|fff0407a42aae304|8410c4152a0c22e5|1007330487||t20061.5095833333s|74ee3e8ad58b4d81|17872427|qs|local|vector|||0.051||
-p_flux_n2o_biochar1|stem|67e551cc8a39ceac|5d892bc21d618d99|8410c4152a0c22e5|-156967029||t20061.5095949074s|e58bbe088fedbff8|17863668|qs|local|vector|||0.019||
-p_flux_n2o_diurnal_biochar1|stem|dde529b79e68ed27|75eeb0d5c0639898|e99672056e42f52e|55312423||t20061.5096296296s|86797005cce067c0|18083161|qs|local|vector|||3.159|Using ragg device as default. Ignoring type and antialias arguments. Removed 6098 rows containing nonfinite outside the scale rangestat_smooth.. Removed 6098 rows containing missing values or values outside the scale rangegeom_point.|
+p_bar_n2o_biochar1|stem|0912611692cfbbc7|4b43139c39dc1c2f|9f7e89d115850045|-375860657||t20073.7018518519s|e82ff0c689ea7403|5325988|qs|local|vector|||0.769||
+p_flux_ch4_biochar1|stem|5d593b7115819f8f|be57dc2d5184a846|0a25bb43e013bb6a|-790101560||t20073.7018981481s|f4d2b43e04bb2d23|20177990|qs|local|vector|||0.016||
+p_flux_co2_biochar1|stem|9b6fdc29dd28ce15|fff0407a42aae304|0a25bb43e013bb6a|1007330487||t20073.7018634259s|e268364b3e6b0bd5|20161936|qs|local|vector|||0.056||
+p_flux_n2o_biochar1|stem|cae5341cc4df8177|5d892bc21d618d99|0a25bb43e013bb6a|-156967029||t20073.7033333333s|71c6de1196cfbad7|20164072|qs|local|vector|||0.017||
+p_flux_n2o_diurnal_biochar1|stem|a239ff672591737d|75eeb0d5c0639898|69fe888653a3bcb2|55312423||t20073.7033796296s|0a2ed9289290f499|20382847|qs|local|vector|||3.386|Using ragg device as default. Ignoring type and antialias arguments. Removed 6098 rows containing nonfinite outside the scale rangestat_smooth.. Removed 6098 rows containing missing values or values outside the scale rangegeom_point.|
 p_flux_n2o_T_biochar1|stem|37f1057d7a700e5d|793ab79da0c2dfe1|a325bfa01fc9c7ba|67646217||t20060.736875s|302caddc620d038b|17907918|qs|local|vector|||0.022||
-p_flux_n2o_with_Nappl_biochar1|stem|4d8ca3619f944377|b6eeea89215b6d9f|830febdd930f149e|-1067542745||t20061.5142824074s|b159b903d5d000eb|17731125|qs|local|vector|||0.061||
+p_flux_n2o_with_Nappl_biochar1|stem|3f8662f006fd49bf|b6eeea89215b6d9f|45baa2e66175bb1c|-1067542745||t20073.7033796296s|b398d49694151249|20227745|qs|local|vector|||0.036||
+p_gpp_date|stem|2976c36e009f7900|2fd408143f0d4b69|9e50e2f4dd1a90ae|820363459||t20073.7455092593s|fde9ae6d5a038409|19648169|qs|local|vector|||0.059||
+p_gpp_Q_response|stem|0cce0807857cf1ed|877bf30c0af620d3|9e50e2f4dd1a90ae|255590019||t20073.7430671296s|88c6534e1d092a71|16262148|qs|local|vector|||0.058||
+p_reco_T_response|stem|7b6b1b20a6761e64|1db9e2a71e0f0558|9e50e2f4dd1a90ae|-531583413||t20073.7430555556s|913c70d3ff22d19f|11080292|qs|local|vector|||0.067||
+partition_fluxes|function|485d69d8e5101d5e|||||||||||||||
 plot_chi|function|beb264cb9ed71fb7|||||||||||||||
 plot_chi_co2_with_rmse|function|b12b7fd4b1569923|||||||||||||||
 plot_chi_lm|function|71037b4a495ef979|||||||||||||||
@@ -43,6 +49,8 @@ plot_n2o_flux_diurnal|function|87e51e9bf35a8ff5|||||||||||||||
 read_cs_data|function|a981fba59c3a054a|||||||||||||||
 read_metadata|function|9c78b309bc9eb864|||||||||||||||
 remove_out_of_range|function|7c99feba2ec7a26c|||||||||||||||
+report_html|stem|1361885994fd004b|572b6ca5430f181c|841d63fdc0eb2e22|-1074260523|analysis/skyline_analysis_biochar1.html*analysis/skyline_analysis_biochar1.Rmd|t20073.7459027778s|ccf806d67e5fd98c|4533286|file|local|vector|||25.886||
 sma|function|a1174c821ce49085|||||||||||||||
-test|stem|17ae88d2b587a9cb|3a0c23ea65fbc93f|f45a83de6288d68e|1839796588||t20061.5095717593s|fd54f120868fef3d|2035|qs|local|vector|||0.209||
+switch_sign_co2|function|cd7e36f7db8964b9|||||||||||||||
+test|stem|631bbccb3c9e13ad|3a0c23ea65fbc93f|ae11f1e258afc2f9|1839796588||t20073.7018402778s|23946e62586e025f|2034|qs|local|vector|||0.051||
 v_pkgs|object|9b807eae06b01d69|||||||||||||||

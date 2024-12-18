@@ -919,8 +919,8 @@ bar_means_by_trmt <- function(dt, flux_name = "f_co2",
   dt_cham[, chamber_id := as.factor(chamber_id)]
 
   dt_cham[, f_se := f_sd / sqrt(n)]
-  dt_cham[, ci_lo := f - (f_se * 1.96)]
-  dt_cham[, ci_hi := f + (f_se * 1.96)]
+  dt_cham[, ci_lo := f - (f_se * 1.96)] # replace with crtitical t value f(n)
+  dt_cham[, ci_hi := f + (f_se * 1.96)] # replace with crtitical t value f(n)
 
 # Bar plots + jittered points + error bars
   p <- ggplot(dt_cham, aes(trmt_id, f, colour = trmt_id))
@@ -1134,5 +1134,60 @@ calc_flux_ln <- function(dt, gas_name = "co2", use_STP = TRUE, PA = 1000,
   # remove un-needed variables
   dt[, dchi_dt := NULL]
   dt[, sigma_dchi_dt := NULL]
+  return(dt)
+}
+
+partition_fluxes <- function(dt, method = c("nighttime_only", "regression")) {
+  method  <- match.arg(method)
+  dt[,  month := month(datect)]
+  # normalise respiration to 10 deg C
+  dt[, dTA := TA - 10]
+  dt[, chamber_id := droplevels(chamber_id)]
+
+  if (method == "nighttime_only") {
+    m <- lm(f_co2 ~ dTA, data = dt[light == FALSE])
+    k_T <- coefficients(m)[2]
+    dt[light == FALSE, dR := dTA * k_T]
+    dt[light == FALSE, R_10 := f_co2 - dR]
+    dt[light == FALSE, R_10_ch := mean(R_10, na.rm = TRUE), by = .(chamber_id, month)]
+    # apply these values to all rows including light
+    dt[, R_10_ch := mean(R_10_ch, na.rm = TRUE), by = .(chamber_id, month)]
+    dt[, R := R_10_ch + dTA * k_T]
+  } else if (method == "regression") {
+    # method 2
+    dt[, sqrtPPFD := sqrt(PPFD_IN)]
+    m <- lmer(f_co2 ~ dTA + sqrtPPFD + (1 | chamber_id) + (1 | month), data = dt)
+    dt[, R := predict(m, newdata = dt[, .(chamber_id, month, dTA, sqrtPPFD = 0)])]
+    # plot(dt$TA, dt$R)
+  }
+  # calculate GPP by subtracting respiration
+  dt[, P := f_co2 - R]
+  return(dt)
+}
+
+switch_sign_co2 <- function(dt,
+                    convention_in  = c("biological", "meterological")) {
+  convention_in  <- match.arg(convention_in)
+
+  # check input convention
+  # plot(f_co2 ~ TA, data = dt[PPFD_IN < 10])
+  # plot(f_co2 ~ sqrt(PPFD_IN), data = dt[PPFD_IN > 10])
+  slope_T <- lm(f_co2 ~ 0 + TA, data = dt[PPFD_IN < 10])$coefficients
+  slope_Q <- lm(f_co2 ~ sqrt(PPFD_IN), data = dt[PPFD_IN > 10])$coefficients[2]
+
+  if (slope_T < 0 & slope_Q > 0) {
+    convention <- "biological"
+  } else if (slope_T > 0 & slope_Q < 0) {
+    convention <- "meterological"
+  } else {
+    convention <- NA
+  }
+
+  if (convention != convention_in) stop("Attempting to switch sign convention
+    for CO2, but seems not to be in the sign convention you think it is.
+    Check the data.")
+
+  # switch to opposite sign convention
+  dt[,  f_co2 := -1 * f_co2]
   return(dt)
 }

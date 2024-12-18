@@ -27,7 +27,10 @@ list(
   tar_target(l_meta, qread("_targets/objects/l_meta")),
 
   tar_target(fname_dt_flux, "_targets/objects/dt_flux", format = "file"),
-  tar_target(dt_flux, qread(fname_dt_flux)[expt_id == "biochar1"]),
+  tar_target(dt_flux_in, qread(fname_dt_flux)[expt_id == "biochar1"]),
+  # choose sign convention for CO2 fluxes
+  tar_target(dt_flux, switch_sign_co2(dt_flux_in, convention_in = "meterological")),
+
   tar_target(test, summary(dt_flux)),
 
   # biochar1
@@ -80,5 +83,37 @@ list(
     name = p_bar_n2o_biochar1,
     command = bar_means_by_trmt(dt_flux,
       flux_name = "f_n2o", mult = 1000)
-  )
+  ),
+  # flux partitioning
+  tar_target(
+    name = dt,
+    command = partition_fluxes(dt_flux, method = "nighttime_only")
+  ),
+  tar_target(
+    name = p_reco_T_response,
+    command = plot_flux_vs_xvar(dt[light == FALSE], flux_name = "f_co2",
+                              sigma_name = "sigma_f_co2", xvar_name = "TA",
+                              colour_name = "chamber_id", facet_name = "chamber_id",
+                              colour_is_factor = TRUE, rows_only = FALSE) +
+                              geom_line(aes(y = R, colour = as.factor(month)))
+  ),
+  tar_target(
+    name = p_gpp_Q_response,
+    command = plot_flux_vs_xvar(dt[light == TRUE], flux_name = "P",
+                              sigma_name = "sigma_f_co2", xvar_name = "PPFD_IN",
+                              colour_name = "TA", facet_name = "chamber_id",
+                              colour_is_factor = FALSE, rows_only = FALSE) +
+                              geom_line(aes(y = R, colour = TA))
+  ),
+  tar_target(
+    name = p_gpp_date,
+    command = plot_flux_vs_xvar(dt, flux_name = "P",
+                              sigma_name = "sigma_f_co2", xvar_name = "datect",
+                              colour_name = "chamber_id", facet_name = "trmt_id",
+                              colour_is_factor = TRUE, rows_only = TRUE,
+                              mult = 1)
+  ),
+
+  # report file:
+  tar_render(report_html, here("analysis", "skyline_analysis_biochar1.Rmd"))
 )
