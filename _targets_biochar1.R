@@ -87,7 +87,7 @@ list(
   # flux partitioning
   tar_target(
     name = dt,
-    command = partition_fluxes(dt_flux, method = "nighttime_only")
+    command = partition_fluxes(dt_flux, method = "subtract_nighttime_R")
   ),
   tar_target(
     name = p_reco_T_response,

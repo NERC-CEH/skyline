@@ -1,6 +1,6 @@
 name|type|data|command|depend|seed|path|time|size|bytes|format|repository|iteration|parent|children|seconds|warnings|error
-.Random.seed|object|6711a2ef45213df1|||||||||||||||
 %!in%|function|d16b87d3f8dd9675|||||||||||||||
+.Random.seed|object|6711a2ef45213df1|||||||||||||||
 bar_means_by_trmt|function|fed2da4dca1d0495|||||||||||||||
 calc_flux_ln|function|db75e59faf0271f8|||||||||||||||
 calc_flux_nl|function|e5f9da2b370ddc24|||||||||||||||
@@ -8,27 +8,41 @@ calc_VWC_effect|function|f978c8e5cf16dc4a|||||||||||||||
 check_data_available|function|d96afbd0d74473fc|||||||||||||||
 combine_fluxes|function|9c60e7d3fd759a68|||||||||||||||
 convert_metadata_csv|function|e75b7d9a2d713c17|||||||||||||||
-dt_chi|stem|5c6c30515efedd2d|889df5f301e27533|5f8fa19f78cb05b9|1274587512||t20060.7655208333s|7e94dfc8fabf473b|422490333|qs|local|vector|||17.879||
-dt_flux|stem|183def7a56809a88|5e19f51e14ae8edc|413652ae91e51b59|2028800325||t20061.5158333333s|238aa81affcbe54e|2155062|qs|local|vector|||0.611||
+dt|stem|32273da1311ed8c0|7b8f7abaf8d06433|50705983b3dd58a7|1446676327||t20077.7186069733s|84377a3785d17ff2|2493938|qs|local|vector|||0.95||
+dt_flux|stem|3b7f641e295f5cf5|5c6b5a44be5ac61c|f94a7b50bf3fa861|2028800325||t20076.4718129785s|081935f95c7142f7|2160671|qs|local|vector|||0.21||
+dt_flux_in|stem|2b7cf441a56f2440|5e19f51e14ae8edc|90869e9e9c9c6708|-1285116841||t20076.4718099483s|81d95ae343593981|2156756|qs|local|vector|||0.36||
+dt_ts|stem||5934de2af1ee6d1f|d908ff1adf1e46ed|-908611424||t20077.7646140818s||0|qs|local|vector|||0.09||object date_byhour not found
 ema|function|f00461538e24437f|||||||||||||||
+expand_to_complete_ts|function|c930c484cf7f8c74|||||||||||||||
+fill_gaps_PPFD_dTA_VWC|function|e4bad73162d632f3|||||||||||||||
 filter_data|function|13f63bbbedc4fec1|||||||||||||||
 filter_fluxes|function|23c94e176db88f6a|||||||||||||||
 final_fluxes|function|a88bbf0eb922a352|||||||||||||||
 finding_Nema|function|4f0118be119a035d|||||||||||||||
-fname_dt_chi|stem|5c6c30515efedd2d|7e0eed5880cbb011|2c530c1562a7fbd1|-1423767504|_targets/objects/dt_chi_digestate1|t20061.4149652778s|7e94dfc8fabf473b|422490333|file|local|vector|||2.734|multiple udunits databases present  appsjasminjaspyminiforge_envsjasr4.3mf323.11.00envsjasr4.3mf323.11.00v20240815shareudunitsudunits2.xml  usrshareudunitsudunits2.xml|
-fname_dt_flux|stem|6d01b93bff5136d2|9af87d9c1dbfa145|2c530c1562a7fbd1|-144876181|_targets/objects/dt_flux|t20061.4245949074s|4b236c9d41cac59f|20873925|file|local|vector|||1.55|multiple udunits databases present  appsjasminjaspyminiforge_envsjasr4.3mf323.11.00envsjasr4.3mf323.11.00v20240815shareudunitsudunits2.xml  usrshareudunitsudunits2.xml|
-fname_meta|stem|a9aa3875c9ffca37|648634c95e56204f|2c530c1562a7fbd1|1315833855|data-raw/skyline_meta-data.xlsx|t20040.490150463s|ed50100cee6bf200|67159|file|local|vector|||0||
+fname_dt_flux|stem|abe6d6ebeeff1bbc|9af87d9c1dbfa145|2c530c1562a7fbd1|-144876181|_targets/objects/dt_flux|t19888.4987847222s|feef3eac8781d299|20860797|file|local|vector|||2.59||
 get_ch_position_data|function|3505bc41f7c9b131|||||||||||||||
+get_cum_f_co2|function|2af9bf88a193a105|||||||||||||||
 get_data|function|c79afd302c843e90|||||||||||||||
 get_flux|function|8e91d04f1b696690|||||||||||||||
 get_gamdiff|function|d93b05c9d2dc6af9|||||||||||||||
 get_ghg_data|function|85fe13c4b806bb9f|||||||||||||||
 get_soilmet_data|function|2cd5d7a89ae2e423|||||||||||||||
 identify_deadband|function|c7343ba29759a99a|||||||||||||||
-l_meta|stem|ccfb6e5daa92d7c7|2aa11f8f126c6c79|2c530c1562a7fbd1|-466918314||t20060.7652430556s|f9b46ebbad8ef0c4|5207|qs|local|vector|||0.005||
+l_meta|stem|1346939f08abe753|2aa11f8f126c6c79|2c530c1562a7fbd1|-466918314||t20076.4718051075s|fbd91b3f3572443a|5386|qs|local|vector|||0.01||
+p_bar_n2o_digestate1|stem|7d0f81b8dc96b22b|4b43139c39dc1c2f|4daee3eccd4038fd|-1780270158||t20076.4718880323s|3bc76cea4d4ac5f6|5435023|qs|local|vector|||0.59||
+p_flux_ch4_digestate1|stem|ba3537ae150bc19a|be57dc2d5184a846|29f0323389438bfe|2136295784||t20076.4718783169s|f657669213c9e70a|17928241|qs|local|vector|||0.06||
+p_flux_co2_digestate1|stem|90a9c91ca2283406|fff0407a42aae304|29f0323389438bfe|1273000730||t20076.4718180874s|5f69c7115027ac6e|15788320|qs|local|vector|||0.08||
+p_flux_n2o_digestate1|stem|3b090e6ffb0ee4d7|5d892bc21d618d99|29f0323389438bfe|-1229746997||t20076.471891186s|0ca260ef1457925f|17908004|qs|local|vector|||0.03||
+p_flux_n2o_diurnal_digestate1|stem|e7ad712410d4fb58|afcd83cb35383604|3bd0f6cc8f21e23a|424828575||t20076.4718744799s|57140989b322d37e|15001494|qs|local|vector|||4.51|Using ragg device as default. Ignoring type and antialias arguments. Removed 102 rows containing nonfinite outside the scale rangestat_smooth.. Removed 102 rows containing missing values or values outside the scale rangegeom_point.|
+p_flux_n2o_with_Nappl_digestate1|stem|8f2079de41c51d8d|78f5305daca11e9e|30a2427b9c8228eb|724922860||t20076.471895356s|447873094ca6ea89|15362699|qs|local|vector|||0.08||
+p_gpp_date|stem|4a959da022432659|2fd408143f0d4b69|53651c9ef54e1575|820363459||t20077.7186147895s|3b16301733ee0874|17455327|qs|local|vector|||0.14||
+p_gpp_Q_response|stem|515ee2860a6903c0|877bf30c0af620d3|53651c9ef54e1575|255590019||t20077.7186294069s|cce5a3236913114c|12209819|qs|local|vector|||0.24||
+p_reco_T_response|stem|8064fd6a31f3f14d|1db9e2a71e0f0558|53651c9ef54e1575|-531583413||t20077.7186221661s|62faf24810fa7ca3|8924103|qs|local|vector|||0.05||
+partition_fluxes|function|ee90dac2fcf381c7|||||||||||||||
 plot_chi|function|beb264cb9ed71fb7|||||||||||||||
 plot_chi_co2_with_rmse|function|b12b7fd4b1569923|||||||||||||||
 plot_chi_lm|function|71037b4a495ef979|||||||||||||||
+plot_cum_f_co2|function|09528067aabfb05b|||||||||||||||
 plot_data_unfiltered|function|e88710466afe6503|||||||||||||||
 plot_diurnal|function|d1657ad75010dba0|||||||||||||||
 plot_flux|function|d9c084c67c0ccb8e|||||||||||||||
@@ -39,6 +53,8 @@ plot_n2o_flux_diurnal|function|87e51e9bf35a8ff5|||||||||||||||
 read_cs_data|function|a981fba59c3a054a|||||||||||||||
 read_metadata|function|9c78b309bc9eb864|||||||||||||||
 remove_out_of_range|function|7c99feba2ec7a26c|||||||||||||||
+report_html|stem|17b65d9f50f46828|cd731e21df97e000|389eec95f293e7d2|-1074260523|analysis/skyline_analysis_digestate1.html*analysis/skyline_analysis_digestate1.Rmd|t20077.7194689926s|3db7f4cfdcbeb62b|1334331|file|local|vector|||69.87||
 sma|function|a1174c821ce49085|||||||||||||||
-test|stem|7a265ea28bc41a13|3a0c23ea65fbc93f|811b81efbc5332a3|1839796588||t20061.5158333333s|87aa515496c6c55e|2123|qs|local|vector|||0.201||
+switch_sign_co2|function|cd7e36f7db8964b9|||||||||||||||
+test|stem|4766ff8e3c8f53f9|3a0c23ea65fbc93f|0394a50e864b07a9|1839796588||t20076.4718142585s|44fefbc87cc9215c|2129|qs|local|vector|||0.06||
 v_pkgs|object|9b807eae06b01d69|||||||||||||||

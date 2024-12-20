@@ -1,6 +1,6 @@
 name|type|data|command|depend|seed|path|time|size|bytes|format|repository|iteration|parent|children|seconds|warnings|error
-.Random.seed|object|6711a2ef45213df1|||||||||||||||
 %!in%|function|d16b87d3f8dd9675|||||||||||||||
+.Random.seed|object|6711a2ef45213df1|||||||||||||||
 bar_means_by_trmt|function|fed2da4dca1d0495|||||||||||||||
 calc_flux_ln|function|db75e59faf0271f8|||||||||||||||
 calc_flux_nl|function|e5f9da2b370ddc24|||||||||||||||
@@ -8,15 +8,15 @@ calc_VWC_effect|function|6e501071e49033ba|||||||||||||||
 check_data_available|function|d96afbd0d74473fc|||||||||||||||
 combine_fluxes|function|9c60e7d3fd759a68|||||||||||||||
 convert_metadata_csv|function|e75b7d9a2d713c17|||||||||||||||
-dt|stem|fe70397584962894|0dd48b4037769235|6a7e5d381d79a740|1446676327||t20073.7430555556s|2a28bae181020548|3497369|qs|local|vector|||0.036||
-dt_flux|stem|b6fb22582959b4ba|5c6b5a44be5ac61c|a99d5402bf518afe|2028800325||t20073.7018402778s|710850daa4b9ce44|3039765|qs|local|vector|||0.396||
-dt_flux_in|stem|2aa521081189dc01|697a8415d84373f3|413652ae91e51b59|-1285116841||t20073.7018402778s|3574308ffe5f206e|3039776|qs|local|vector|||0.391||
+dt|stem|be19a8a0ad7cf1ab|0dd48b4037769235|1e48265b7a5ce32c|1446676327||t20075.6129610025s|260deece1d61ef1d|3502603|qs|local|vector|||0.18||
+dt_flux|stem|243ffc43338fb064|5c6b5a44be5ac61c|c631d094110543cb|2028800325||t20075.6129508239s|5b909ef328b48a78|3039980|qs|local|vector|||0.17||
+dt_flux_in|stem|52c57f7ae46233f0|697a8415d84373f3|90869e9e9c9c6708|-1285116841||t20075.6129456034s|bd70b9f4a57a2720|3040028|qs|local|vector|||1.26||
 ema|function|f00461538e24437f|||||||||||||||
 filter_data|function|13f63bbbedc4fec1|||||||||||||||
 filter_fluxes|function|23c94e176db88f6a|||||||||||||||
 final_fluxes|function|a88bbf0eb922a352|||||||||||||||
 finding_Nema|function|4f0118be119a035d|||||||||||||||
-fname_dt_flux|stem|6d01b93bff5136d2|9af87d9c1dbfa145|2c530c1562a7fbd1|-144876181|_targets/objects/dt_flux|t20061.4245949074s|4b236c9d41cac59f|20873925|file|local|vector|||1.881|multiple udunits databases present  appsjasminjaspyminiforge_envsjasr4.3mf323.11.00envsjasr4.3mf323.11.00v20240815shareudunitsudunits2.xml  usrshareudunitsudunits2.xml|
+fname_dt_flux|stem|abe6d6ebeeff1bbc|9af87d9c1dbfa145|2c530c1562a7fbd1|-144876181|_targets/objects/dt_flux|t19888.4987847222s|feef3eac8781d299|20860797|file|local|vector|||9.97||
 get_ch_position_data|function|3505bc41f7c9b131|||||||||||||||
 get_data|function|c79afd302c843e90|||||||||||||||
 get_flux|function|8e91d04f1b696690|||||||||||||||
@@ -24,17 +24,16 @@ get_gamdiff|function|d93b05c9d2dc6af9|||||||||||||||
 get_ghg_data|function|85fe13c4b806bb9f|||||||||||||||
 get_soilmet_data|function|2cd5d7a89ae2e423|||||||||||||||
 identify_deadband|function|c7343ba29759a99a|||||||||||||||
-l_meta|stem|ccfb6e5daa92d7c7|2aa11f8f126c6c79|2c530c1562a7fbd1|-466918314||t20060.751099537s|f9b46ebbad8ef0c4|5207|qs|local|vector|||2.769|multiple udunits databases present  appsjasminjaspyminiforge_envsjasr4.3mf323.11.00envsjasr4.3mf323.11.00v20240815shareudunitsudunits2.xml  usrshareudunitsudunits2.xml|
-p_bar_n2o_biochar1|stem|0912611692cfbbc7|4b43139c39dc1c2f|9f7e89d115850045|-375860657||t20073.7018518519s|e82ff0c689ea7403|5325988|qs|local|vector|||0.769||
-p_flux_ch4_biochar1|stem|5d593b7115819f8f|be57dc2d5184a846|0a25bb43e013bb6a|-790101560||t20073.7018981481s|f4d2b43e04bb2d23|20177990|qs|local|vector|||0.016||
-p_flux_co2_biochar1|stem|9b6fdc29dd28ce15|fff0407a42aae304|0a25bb43e013bb6a|1007330487||t20073.7018634259s|e268364b3e6b0bd5|20161936|qs|local|vector|||0.056||
-p_flux_n2o_biochar1|stem|cae5341cc4df8177|5d892bc21d618d99|0a25bb43e013bb6a|-156967029||t20073.7033333333s|71c6de1196cfbad7|20164072|qs|local|vector|||0.017||
-p_flux_n2o_diurnal_biochar1|stem|a239ff672591737d|75eeb0d5c0639898|69fe888653a3bcb2|55312423||t20073.7033796296s|0a2ed9289290f499|20382847|qs|local|vector|||3.386|Using ragg device as default. Ignoring type and antialias arguments. Removed 6098 rows containing nonfinite outside the scale rangestat_smooth.. Removed 6098 rows containing missing values or values outside the scale rangegeom_point.|
-p_flux_n2o_T_biochar1|stem|37f1057d7a700e5d|793ab79da0c2dfe1|a325bfa01fc9c7ba|67646217||t20060.736875s|302caddc620d038b|17907918|qs|local|vector|||0.022||
-p_flux_n2o_with_Nappl_biochar1|stem|3f8662f006fd49bf|b6eeea89215b6d9f|45baa2e66175bb1c|-1067542745||t20073.7033796296s|b398d49694151249|20227745|qs|local|vector|||0.036||
-p_gpp_date|stem|2976c36e009f7900|2fd408143f0d4b69|9e50e2f4dd1a90ae|820363459||t20073.7455092593s|fde9ae6d5a038409|19648169|qs|local|vector|||0.059||
-p_gpp_Q_response|stem|0cce0807857cf1ed|877bf30c0af620d3|9e50e2f4dd1a90ae|255590019||t20073.7430671296s|88c6534e1d092a71|16262148|qs|local|vector|||0.058||
-p_reco_T_response|stem|7b6b1b20a6761e64|1db9e2a71e0f0558|9e50e2f4dd1a90ae|-531583413||t20073.7430555556s|913c70d3ff22d19f|11080292|qs|local|vector|||0.067||
+l_meta|stem|1346939f08abe753|2aa11f8f126c6c79|2c530c1562a7fbd1|-466918314||t20075.6129284968s|fbd91b3f3572443a|5386|qs|local|vector|||0.02||
+p_bar_n2o_biochar1|stem|b730eb1d83aa92e4|4b43139c39dc1c2f|45d2394200ef7d63|-375860657||t20075.6129853681s|48afaaa09b1ef48e|6693332|qs|local|vector|||1.62||
+p_flux_ch4_biochar1|stem|e857f1c9ca351f61|be57dc2d5184a846|6d7edeab50232f11|-790101560||t20075.6130035157s|df6cec32ad03b16f|24665031|qs|local|vector|||0.05||
+p_flux_co2_biochar1|stem|154bea9fcf8d1002|fff0407a42aae304|6d7edeab50232f11|1007330487||t20075.6129958528s|071ae3f25f6d6b23|24650200|qs|local|vector|||0.12||
+p_flux_n2o_biochar1|stem|534a39b7a05e672c|5d892bc21d618d99|6d7edeab50232f11|-156967029||t20075.6130107422s|6b863d6223618fcf|24649759|qs|local|vector|||0.04||
+p_flux_n2o_diurnal_biochar1|stem|4d0220f5a54322ed|75eeb0d5c0639898|4be0bb3f3b3c61be|55312423||t20075.6131562886s|4f2c071beba40d34|20751484|qs|local|vector|||11.9|Using ragg device as default. Ignoring type and antialias arguments. Removed 6098 rows containing nonfinite outside the scale rangestat_smooth.. Removed 6098 rows containing missing values or values outside the scale rangegeom_point.|
+p_flux_n2o_with_Nappl_biochar1|stem|9341d90df6e506c1|b6eeea89215b6d9f|880fbb6ea2ffcad8|-1067542745||t20075.6131636205s|f1a671196286e49a|21050550|qs|local|vector|||0.11||
+p_gpp_date|stem|273b55144ddbd21d|2fd408143f0d4b69|aaa40dcbb6ce65af|820363459||t20075.6131713749s|c0806799cf811206|24393370|qs|local|vector|||0.05||
+p_gpp_Q_response|stem|18ec9ce7837bd086|877bf30c0af620d3|aaa40dcbb6ce65af|255590019||t20075.6131844982s|067306c4547ec8db|17050760|qs|local|vector|||0.08||
+p_reco_T_response|stem|c520147ad55fcd21|1db9e2a71e0f0558|aaa40dcbb6ce65af|-531583413||t20075.6131767362s|96bb4dd864c3244b|11832000|qs|local|vector|||0.04||
 partition_fluxes|function|485d69d8e5101d5e|||||||||||||||
 plot_chi|function|beb264cb9ed71fb7|||||||||||||||
 plot_chi_co2_with_rmse|function|b12b7fd4b1569923|||||||||||||||
@@ -49,8 +48,8 @@ plot_n2o_flux_diurnal|function|87e51e9bf35a8ff5|||||||||||||||
 read_cs_data|function|a981fba59c3a054a|||||||||||||||
 read_metadata|function|9c78b309bc9eb864|||||||||||||||
 remove_out_of_range|function|7c99feba2ec7a26c|||||||||||||||
-report_html|stem|1361885994fd004b|572b6ca5430f181c|841d63fdc0eb2e22|-1074260523|analysis/skyline_analysis_biochar1.html*analysis/skyline_analysis_biochar1.Rmd|t20073.7459027778s|ccf806d67e5fd98c|4533286|file|local|vector|||25.886||
+report_html|stem|79ab3e8926fe6255|5831553eb5652946|c3e579a3bd93247e|-1074260523|analysis/skyline_analysis_biochar1.html*analysis/skyline_analysis_biochar1.Rmd|t20075.6199098016s|6f53459fed625011|1483572|file|local|vector|||122.83||
 sma|function|a1174c821ce49085|||||||||||||||
 switch_sign_co2|function|cd7e36f7db8964b9|||||||||||||||
-test|stem|631bbccb3c9e13ad|3a0c23ea65fbc93f|ae11f1e258afc2f9|1839796588||t20073.7018402778s|23946e62586e025f|2034|qs|local|vector|||0.051||
+test|stem|c7a63f7f40d6a79a|3a0c23ea65fbc93f|52d2e66734b43537|1839796588||t20075.6129562504s|98dbd3ce190432b6|2040|qs|local|vector|||0.33||
 v_pkgs|object|9b807eae06b01d69|||||||||||||||

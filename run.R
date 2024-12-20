@@ -10,9 +10,14 @@ Sys.setenv(TAR_PROJECT = "main")
 tar_outdated()
 
 Sys.setenv(TAR_PROJECT = "biochar1")
+Sys.setenv(TAR_PROJECT = "digestate1")
 tar_outdated()
 tar_make()
 tar_read(test)
+
+# for debugging
+lapply(v_pkgs, require, character.only = TRUE)
+tar_load_everything(strict = FALSE)
 
 tar_outdated(starts_with("dt_"))
 tar_outdated(starts_with("manuscript_"))
@@ -20,7 +25,6 @@ system.time(tar_make(starts_with("p_")))
 system.time(tar_make(starts_with("manuscript_")))
 system.time(tar_make())
 tar_load(starts_with("p_"))
-tar_load_everything(strict = FALSE)
 p_unfilt
 ggsave(p_unfilt,  file = "output/HRG/diurnal1/p_unfilt__2023-06-01.png")
 ggsave(p_chi_co2, file = "output/HRG/diurnal1/p_chi_co2_2023-06-01.png")
@@ -33,9 +37,6 @@ p_chi_n2o
 p_flux_co2
 p_flux_ch4
 p_flux_n2o
-
-# for debugging
-lapply(v_pkgs, require, character.only = TRUE)
 
 l_meta$dt_site
 l_meta$dt_expt

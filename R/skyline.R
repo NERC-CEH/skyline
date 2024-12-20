@@ -3,6 +3,7 @@
 # constants
 # define the conversion unit between g N and moles of N2O
 units::install_unit("mol_n2o", "28 g", "mol wt of N in N2O")
+units::install_unit("mol_c_co2_", "12 g", "mol wt of C in CO2")
 # units::install_unit(symbol = "ratio", def = "unitless",
   # name = "dimensionless ratio")
 
@@ -1137,14 +1138,14 @@ calc_flux_ln <- function(dt, gas_name = "co2", use_STP = TRUE, PA = 1000,
   return(dt)
 }
 
-partition_fluxes <- function(dt, method = c("nighttime_only", "regression")) {
+partition_fluxes <- function(dt, method = c("subtract_nighttime_R", "regression")) {
   method  <- match.arg(method)
   dt[,  month := month(datect)]
   # normalise respiration to 10 deg C
   dt[, dTA := TA - 10]
   dt[, chamber_id := droplevels(chamber_id)]
 
-  if (method == "nighttime_only") {
+  if (method == "subtract_nighttime_R") {
     m <- lm(f_co2 ~ dTA, data = dt[light == FALSE])
     k_T <- coefficients(m)[2]
     dt[light == FALSE, dR := dTA * k_T]
@@ -1153,15 +1154,20 @@ partition_fluxes <- function(dt, method = c("nighttime_only", "regression")) {
     # apply these values to all rows including light
     dt[, R_10_ch := mean(R_10_ch, na.rm = TRUE), by = .(chamber_id, month)]
     dt[, R := R_10_ch + dTA * k_T]
+    # calculate GPP by subtracting respiration
+    dt[, P := f_co2 - R]
   } else if (method == "regression") {
     # method 2
-    dt[, sqrtPPFD := sqrt(PPFD_IN)]
-    m <- lmer(f_co2 ~ dTA + sqrtPPFD + (1 | chamber_id) + (1 | month), data = dt)
-    dt[, R := predict(m, newdata = dt[, .(chamber_id, month, dTA, sqrtPPFD = 0)])]
-    # plot(dt$TA, dt$R)
+    form <- formula(f_co2 ~ sqrt(PPFD_IN) + dTA)
+    dt <- dt[!is.na(PPFD_IN) & !is.na(dTA)]
+    dt[, f_co2_pred := predict(lm(form, data = .SD)), by = .(chamber_id, month)]
+    dt[, R_10 := coef(lm(form, data = .SD))[1], by = .(chamber_id, month)]
+    dt[, lue  := coef(lm(form, data = .SD))[2], by = .(chamber_id, month)]
+    dt[, k_T  := coef(lm(form, data = .SD))[3], by = .(chamber_id, month)]
+    dt[, f_co2_pred := lue * sqrt(PPFD_IN) + (R_10 + k_T * dTA)]
+    dt[, P := lue * sqrt(PPFD_IN)]
+    dt[, R := R_10 + k_T * dTA]
   }
-  # calculate GPP by subtracting respiration
-  dt[, P := f_co2 - R]
   return(dt)
 }
 
@@ -1190,4 +1196,120 @@ switch_sign_co2 <- function(dt,
   # switch to opposite sign convention
   dt[,  f_co2 := -1 * f_co2]
   return(dt)
+}
+
+# dtt <- expand_to_complete_ts(dt)
+expand_to_complete_ts <- function(dt,
+  cols = c("datect", "chamber_id", "PPFD_IN", "dTA", "VWC", "f_co2", "lue", "R_10", "k_T")
+  ) {
+
+  # get complete time series of hourly data for PPFD_IN and dTA
+  # start on first full day, end on last full day
+  start_ts <- round_date(min(dt$datect), "day") + days(1)
+  end_ts   <- round_date(max(dt$datect), "day") - days(1)
+  # generate a sequence of POSIXct values with a 1 hour interval
+  v_date_byhour <- seq(from = start_ts, to = end_ts, by = "1 hour")
+
+  # number of chambers
+  n_chamber <- length(unique(dt$chamber_id))
+  # final length should be equal this:
+  length(v_date_byhour) * n_chamber
+  # create chamber_id column
+  v_chamber_id <- rep(unique(dt$chamber_id), each = length(v_date_byhour))
+
+  # repeat the sequence for each chamber
+  v_date_byhour <- rep(v_date_byhour, n_chamber)
+  dt_time <- data.table(date_byhour = v_date_byhour, chamber_id = v_chamber_id)
+
+  # merge hourly time sequence with desired columns of raw data
+  # cols <- c("date_byhour", "chamber_id", "PPFD_IN", "dTA", "VWC", "f_co2", "lue", "R_10", "k_T")
+  ##* WIP this works outside targets but fails inside targets
+  dt <- dt[, ..cols][dt_time, on = .(datect = date_byhour, chamber_id = chamber_id)]
+
+  # get numeric parts of date-time stamp
+  dt[, datect := date_byhour]
+  dt[, date_byhour := NULL]
+  dt[, datets := as.numeric(datect)]
+  dt[, month := as.numeric(month(datect))]
+  dt[, week := as.numeric(week(datect))]
+  dt[, hour := as.numeric(hour(datect))]
+
+  # remove erroneous values
+  dt[PPFD_IN < 0 , PPFD_IN := 0]
+  dt[VWC > 70 , VWC := NA]
+
+  # get hourly means across all chambers for PPFD_IN and dTA
+  dt[, PPFD_IN := mean(PPFD_IN, na.rm = TRUE), by = datect]
+  dt[,  dTA := mean(dTA, na.rm = TRUE), by = datect]
+  dt[,  VWC := mean(VWC, na.rm = TRUE), by = datect]
+  # get means by chambers, weekly for CO2 flux, monthly for fitted parameters
+  dt[, f_co2 := mean(f_co2, na.rm = TRUE), by = .(chamber_id, week)]
+  dt[,  lue  := mean(lue, na.rm = TRUE), by = .(chamber_id, month)]
+  dt[,  R_10 := mean(R_10, na.rm = TRUE), by = .(chamber_id, month)]
+  dt[,  k_T  := mean(k_T, na.rm = TRUE), by = .(chamber_id, month)]
+
+  sum(is.na(dtt$PPFD_IN)); sum(is.na(dtt$dTA)); sum(is.na(dtt$VWC))
+  sum(is.na(dtt$f_co2)); sum(is.na(dtt$lue)); sum(is.na(dtt$R_10)); sum(is.na(dtt$k_T))
+  return(dt)
+}
+
+# dtts <- fill_gaps_PPFD_dTA_VWC(dtt)
+fill_gaps_PPFD_dTA_VWC <- function(dt) {
+  # predict PPFD_IN on basis of hour, separately for each week
+  dt[, PPFD_pred := predict(mgcv::gam(PPFD_IN ~ s(hour, bs = "cc"), data = .SD), newdata = .SD), by = week]
+  dt[PPFD_pred < 0 , PPFD_pred := 0] # cannot be negative
+  # replace missing values with predictions
+  dt[is.na(PPFD_IN), PPFD_IN := PPFD_pred]
+  # predict dTA on basis of PPFD and hour, separately for each week
+  dt[, dTA_pred := predict(mgcv::gam(dTA ~ PPFD_IN + s(hour, bs = "cc"), data = .SD), newdata = .SD), by = week]
+  # predict VWC on basis of time
+  dt[, VWC_pred := predict(mgcv::gam(VWC ~ s(datets), data = .SD), newdata = .SD)]
+  # replace missing values with predictions
+  dt[is.na(dTA), dTA := dTA_pred]
+  dt[is.na(VWC), VWC := VWC_pred]
+  # remove unneeded columns
+  dt[, PPFD_pred := NULL]
+  dt[, dTA_pred := NULL]
+  dt[, VWC_pred := NULL]
+  return(dt)
+}
+
+# dtc <- get_cum_f_co2(dtts)
+get_cum_f_co2 <- function(dt) {
+  setorder(dt, chamber_id, datect)
+  interval_length <- difftime(dtts$datect[2], dtts$datect[1], units = "secs")
+  if (interval_length != 3600) stop("I haven't checked this works time_interval
+    other than an hour, although it should")
+  secs_per_interval <- set_units(as.numeric(interval_length), s)
+
+  # calculate flux terms
+  dt[, f_co2_pred := lue * sqrt(PPFD_IN) + (R_10 + k_T * dTA)]
+  dt[, P := lue * sqrt(PPFD_IN)]
+  dt[, R := R_10 + k_T * dTA]
+
+  # accumulate these
+  dt[, P_cum := cumsum(P), by = chamber_id]
+  dt[, R_cum := cumsum(R), by = chamber_id]
+  dt[, f_co2_cum := cumsum(f_co2_pred), by = chamber_id]
+  dt[, f_co2_obs_cum := cumsum(f_co2), by = chamber_id]
+
+  # convert units to g / m^2
+  dt[, P_cum := set_units(P_cum, umol_c_co2_/m^2/s)]
+  dt[, P_cum := set_units(P_cum * secs_per_interval, g / m^2)]
+  dt[, R_cum := set_units(R_cum, umol_c_co2_/m^2/s)]
+  dt[, R_cum := set_units(R_cum * secs_per_interval, g / m^2)]
+  dt[, f_co2_cum := set_units(f_co2_cum, umol_c_co2_/m^2/s)]
+  dt[, f_co2_cum := set_units(f_co2_cum * secs_per_interval, g / m^2)]
+  dt[, f_co2_obs_cum := set_units(f_co2_obs_cum, umol_c_co2_/m^2/s)]
+  dt[, f_co2_obs_cum := set_units(f_co2_obs_cum * secs_per_interval, g / m^2)]
+  return(dt)
+}
+
+plot_cum_f_co2 <- function(dt) {
+  p <- ggplot(dt, aes(datect, f_co2_cum))
+  p <- p + geom_line(aes(y = P_cum), colour = "green")
+  p <- p + geom_line(aes(y = R_cum), colour = "red")
+  p <- p + geom_line(aes(y = f_co2_cum), colour = "blue")
+  p <- p + facet_wrap(~ chamber_id)
+  return(p)
 }
