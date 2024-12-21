@@ -1,7 +1,6 @@
 ---
 title: "Skyine Analysis- Digestate Experiment"
 author: "Peter Levy"
-date: '`r Sys.Date()`'
 output:
   html_document:
     number_sections: yes
@@ -38,31 +37,31 @@ Sys.setenv(TAR_PROJECT = "digestate1")
 # Digestate Experiment
 
 ```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Bar plot of treatment and chamber means with 95pc confidence intervals. Black symbols show the 95pc   confidence intervals in treatment means, accounting for the within-chamber autocorrelation."}
-tar_read(p_bar_n2o_digestate1, store = here("_targets_digestate1"))
+tar_read(p_bar_n2o, store = here("_targets_digestate1"))
 ```
 
 ```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "CO2 flux over time by treatment."}
-tar_read(p_flux_co2_digestate1, store = here("_targets_digestate1"))
+tar_read(p_flux_co2, store = here("_targets_digestate1"))
 ```
 
 ```{r, echo = FALSE, fig.cap = "CH4 flux over time by treatment."}
-tar_read(p_flux_ch4_digestate1, store = here("_targets_digestate1"))
+tar_read(p_flux_ch4, store = here("_targets_digestate1"))
 ```
 
 ```{r, echo = FALSE, fig.cap = "N2O flux over time by treatment."}
-tar_read(p_flux_n2o_digestate1, store = here("_targets_digestate1"))
+tar_read(p_flux_n2o, store = here("_targets_digestate1"))
 ```
 
 ```{r, eval = FALSE, echo = FALSE, fig.cap = "N2O flux versus temperature by treatment."}
-tar_read(p_flux_n2o_T_digestate1, store = here("_targets_digestate1"))
+tar_read(p_flux_n2o_T, store = here("_targets_digestate1"))
 ```
 
 ```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "N2O flux over time by treatment, showing N application dates as vertical black lines."}
-tar_read(p_flux_n2o_with_Nappl_digestate1, store = here("_targets_digestate1"))
+tar_read(p_flux_n2o_with_Nappl, store = here("_targets_digestate1"))
 ```
 
 ```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Diurnal variation in N2O flux."}
-tar_read(p_flux_n2o_diurnal_digestate1, store = here("_targets_digestate1"))
+tar_read(p_flux_n2o_diurnal, store = here("_targets_digestate1"))
 ```
 
 ```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Respiration response to temperature."}

@@ -33,9 +33,8 @@ list(
 
   tar_target(test, summary(dt_flux)),
 
-  # biochar1
   tar_target(
-    name = p_flux_co2_biochar1,
+    name = p_flux_co2,
     command = plot_flux_vs_xvar(dt_flux, flux_name = "f_co2",
                               sigma_name = "sigma_f_co2", xvar_name = "datect",
                               colour_name = "chamber_id", facet_name = "trmt_id",
@@ -43,7 +42,7 @@ list(
                               mult = 1)
   ),
   tar_target(
-    name = p_flux_ch4_biochar1,
+    name = p_flux_ch4,
     command = plot_flux_vs_xvar(dt_flux, flux_name = "f_ch4",
                               sigma_name = "sigma_f_ch4", xvar_name = "datect",
                               colour_name = "chamber_id", facet_name = "trmt_id",
@@ -51,7 +50,7 @@ list(
                               mult = 1)
   ),
   tar_target(
-    name = p_flux_n2o_biochar1,
+    name = p_flux_n2o,
     command = plot_flux_vs_xvar(dt_flux, flux_name = "f_n2o",
                               sigma_name = "sigma_f_n2o", xvar_name = "datect",
                               colour_name = "chamber_id", facet_name = "trmt_id",
@@ -60,7 +59,7 @@ list(
   ),
   # # this takes ages - needs checking
   #   tar_target(
-  # name = p_flux_n2o_T_biochar1,
+  # name = p_flux_n2o_T,
   #   command = plot_flux_vs_xvar(dt_flux, flux_name = "f_n2o",
   #                             sigma_name = "sigma_f_n2o", xvar_name = "TSoil",
   #                             colour_name = "chamber_id", facet_name = "trmt_id",
@@ -68,26 +67,26 @@ list(
   #                             mult = 1000)
   # ),
   tar_target(
-    name = p_flux_n2o_with_Nappl_biochar1,
+    name = p_flux_n2o_with_Nappl,
     command = plot_n2o_flux(dt_flux, flux_name = "f_n2o",
       sigma_name = "sigma_f_n2o", this_site_id = "EHD", this_expt_id = "biochar1",
       l_meta, mult = 1000)
   ),
   tar_target(
-    name = p_flux_n2o_diurnal_biochar1,
+    name = p_flux_n2o_diurnal,
     command = plot_n2o_flux_diurnal(dt_flux, flux_name = "f_n2o",
       sigma_name = "sigma_f_n2o", this_site_id = "EHD", this_expt_id = "biochar1",
       mult = 1000, y_min = -2, y_max = 2.5)
   ),
   tar_target(
-    name = p_bar_n2o_biochar1,
+    name = p_bar_n2o,
     command = bar_means_by_trmt(dt_flux,
       flux_name = "f_n2o", mult = 1000)
   ),
   # flux partitioning
   tar_target(
     name = dt,
-    command = partition_fluxes(dt_flux, method = "subtract_nighttime_R")
+    command = partition_fluxes(dt_flux, method = "regression")
   ),
   tar_target(
     name = p_reco_T_response,
@@ -112,6 +111,26 @@ list(
                               colour_name = "chamber_id", facet_name = "trmt_id",
                               colour_is_factor = TRUE, rows_only = TRUE,
                               mult = 1)
+  ),
+
+  tar_target(
+    name = dt_ts,
+    command = expand_to_complete_ts(dt)
+  ),
+
+  tar_target(
+    name = dt_gf,
+    command = fill_gaps_PPFD_dTA_VWC(dt_ts)
+  ),
+
+  tar_target(
+    name = dt_cum,
+    command = get_cum_f_co2(dt_gf)
+  ),
+
+  tar_target(
+    name = p_cum,
+    command = plot_cum_f_co2(dt_cum)
   ),
 
   # report file:
