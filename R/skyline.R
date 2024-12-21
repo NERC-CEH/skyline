@@ -1202,7 +1202,6 @@ switch_sign_co2 <- function(dt,
 expand_to_complete_ts <- function(dt,
   cols = c("datect", "chamber_id", "PPFD_IN", "dTA", "VWC", "f_co2", "lue", "R_10", "k_T")
   ) {
-
   # get complete time series of hourly data for PPFD_IN and dTA
   # start on first full day, end on last full day
   start_ts <- round_date(min(dt$datect), "day") + days(1)
@@ -1222,13 +1221,12 @@ expand_to_complete_ts <- function(dt,
   dt_time <- data.table(date_byhour = v_date_byhour, chamber_id = v_chamber_id)
 
   # merge hourly time sequence with desired columns of raw data
+  # round time to nearest hour so we can merge with complete time series
+  dt[, datect := lubridate::round_date(datect, "hour")]
   # cols <- c("date_byhour", "chamber_id", "PPFD_IN", "dTA", "VWC", "f_co2", "lue", "R_10", "k_T")
-  ##* WIP this works outside targets but fails inside targets
   dt <- dt[, ..cols][dt_time, on = .(datect = date_byhour, chamber_id = chamber_id)]
 
   # get numeric parts of date-time stamp
-  dt[, datect := date_byhour]
-  dt[, date_byhour := NULL]
   dt[, datets := as.numeric(datect)]
   dt[, month := as.numeric(month(datect))]
   dt[, week := as.numeric(week(datect))]
@@ -1248,12 +1246,10 @@ expand_to_complete_ts <- function(dt,
   dt[,  R_10 := mean(R_10, na.rm = TRUE), by = .(chamber_id, month)]
   dt[,  k_T  := mean(k_T, na.rm = TRUE), by = .(chamber_id, month)]
 
-  sum(is.na(dtt$PPFD_IN)); sum(is.na(dtt$dTA)); sum(is.na(dtt$VWC))
-  sum(is.na(dtt$f_co2)); sum(is.na(dtt$lue)); sum(is.na(dtt$R_10)); sum(is.na(dtt$k_T))
   return(dt)
 }
 
-# dtts <- fill_gaps_PPFD_dTA_VWC(dtt)
+# dt_gf <- fill_gaps_PPFD_dTA_VWC(dt_ts)
 fill_gaps_PPFD_dTA_VWC <- function(dt) {
   # predict PPFD_IN on basis of hour, separately for each week
   dt[, PPFD_pred := predict(mgcv::gam(PPFD_IN ~ s(hour, bs = "cc"), data = .SD), newdata = .SD), by = week]
@@ -1277,7 +1273,7 @@ fill_gaps_PPFD_dTA_VWC <- function(dt) {
 # dtc <- get_cum_f_co2(dtts)
 get_cum_f_co2 <- function(dt) {
   setorder(dt, chamber_id, datect)
-  interval_length <- difftime(dtts$datect[2], dtts$datect[1], units = "secs")
+  interval_length <- difftime(dt$datect[2], dt$datect[1], units = "secs")
   if (interval_length != 3600) stop("I haven't checked this works time_interval
     other than an hour, although it should")
   secs_per_interval <- set_units(as.numeric(interval_length), s)
