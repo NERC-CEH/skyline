@@ -54,18 +54,19 @@ dryrun <- FALSE
 #### list of targets: ####
 list(
   # an excel file containing all metadata; we track only the path name
-  tar_target(fname_meta_xlsx, "data-raw/skyline_meta-data.xlsx"),
+  tar_target(fname_meta_xlsx, "data-raw/skyline_meta-data.xlsx",
+    format = "file"),
 
  # convert to csv files whose contents we track
   tar_target(
-    name = v_fname_csv, format = "file",
+    name = v_fname_meta_csv, format = "file",
     command = convert_metadata_csv(fname_meta_xlsx)
   ),
 
   # read these csv into a list of data tables
   tar_target(
     name = l_meta,
-    command = read_metadata(v_fname_csv)
+    command = read_metadata(v_fname_meta_csv)
   ),
 
   tar_target(

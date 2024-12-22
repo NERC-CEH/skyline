@@ -24,7 +24,8 @@ data.table::getDTthreads()
 
 list(
   # read the list of metadata data tables
-  tar_target(l_meta, qread("_targets/objects/l_meta")),
+  tar_target(fname_meta, "_targets/objects/l_meta", format = "file"),
+  tar_target(l_meta, qread(fname_meta)),
 
   tar_target(fname_dt_flux, "_targets/objects/dt_flux", format = "file"),
   tar_target(dt_flux_in, qread(fname_dt_flux)[expt_id == "digestate1"]),
