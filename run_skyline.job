@@ -1,10 +1,10 @@
 #!/bin/bash
-#SBATCH -p test
+#SBATCH -p high-mem
 #SBATCH --job-name=skyline
 #SBATCH -o output/run_skyline.out
 #SBATCH -e output/run_skyline.err
 #SBATCH --mem=100000
-#SBATCH -t 03:30:00
-#SBATCH -n 5
+#SBATCH -t 01:00:00
+# # SBATCH -n 5
 module load jasr
 R CMD BATCH --no-restore --no-save run_skyline.R output/run_skyline.Rout
