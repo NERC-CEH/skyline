@@ -3,6 +3,8 @@ library(targets)
 # tar_config_set(script = "_targets.R", store = "_targets", project = "main")
 # tar_config_set(script = "_targets_biochar1.R", store = "_targets_biochar1", project = "biochar1")
 # tar_config_set(script = "_targets_digestate1.R", store = "_targets_digestate1", project = "digestate1")
+# tar_config_set(script = "_targets_split1.R", store = "_targets_split1", project = "split1")
+# tar_config_set(script = "_targets_yield1.R", store = "_targets_yield1", project = "yield1")
 
 source("_targets.R")
 
@@ -11,7 +13,10 @@ tar_outdated()
 
 Sys.setenv(TAR_PROJECT = "biochar1")
 Sys.setenv(TAR_PROJECT = "digestate1")
+Sys.setenv(TAR_PROJECT = "split1")
+Sys.setenv(TAR_PROJECT = "yield1")
 tar_outdated()
+system.time(tar_make_future(workers = 5L))
 tar_make()
 tar_read(test)
 

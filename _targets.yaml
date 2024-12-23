@@ -7,3 +7,9 @@ biochar1:
 digestate1:
   script: _targets_digestate1.R
   store: _targets_digestate1
+split1:
+  script: _targets_split1.R
+  store: _targets_split1
+yield1:
+  script: _targets_yield1.R
+  store: _targets_yield1

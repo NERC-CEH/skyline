@@ -34,7 +34,6 @@ list(
 
   tar_target(test, summary(dt_flux)),
 
-  # digestate1
   tar_target(
     name = p_flux_co2,
     command = plot_flux_vs_xvar(dt_flux, flux_name = "f_co2",
@@ -89,6 +88,28 @@ list(
   tar_target(
     name = dt,
     command = partition_fluxes(dt_flux, method = "regression")
+  ),
+  # check basic environmental variables
+  tar_target(
+    name = p_T,
+    command = plot_flux_vs_xvar(dt, flux_name = "TA",
+                              sigma_name = "sigma_f_ch4", xvar_name = "datect",
+                              colour_name = "VWC", facet_name = "chamber_id",
+                              colour_is_factor = FALSE, rows_only = FALSE)
+  ),
+  tar_target(
+    name = p_Q,
+    command = plot_flux_vs_xvar(dt, flux_name = "PPFD_IN",
+                              sigma_name = "sigma_f_ch4", xvar_name = "datect",
+                              colour_name = "TA", facet_name = "chamber_id",
+                              colour_is_factor = FALSE, rows_only = FALSE)
+  ),
+  tar_target(
+    name = p_VWC,
+    command = plot_flux_vs_xvar(dt, flux_name = "VWC",
+                              sigma_name = "sigma_f_ch4", xvar_name = "datect",
+                              colour_name = "PPFD_IN", facet_name = "chamber_id",
+                              colour_is_factor = FALSE, rows_only = FALSE)
   ),
   tar_target(
     name = p_reco_T_response,

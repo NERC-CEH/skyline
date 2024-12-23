@@ -60,8 +60,16 @@ tar_read(p_flux_n2o_T, store = here("_targets_biochar1"))
 tar_read(p_flux_n2o_with_Nappl, store = here("_targets_biochar1"))
 ```
 
-```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Diurnal variation in N2O flux."}
-tar_read(p_flux_n2o_diurnal, store = here("_targets_biochar1"))
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Temperature data over time."}
+tar_read(p_T, store = here("_targets_biochar1"))
+```
+
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "PPFD data over time."}
+tar_read(p_Q, store = here("_targets_biochar1"))
+```
+
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "VWC data over time."}
+tar_read(p_VWC, store = here("_targets_biochar1"))
 ```
 
 ```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Respiration response to temperature."}

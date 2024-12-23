@@ -849,6 +849,10 @@ finding_Nema <- function(dt_flux, l_meta, save_file = FALSE) {
 filter_fluxes <- function(dt, save_file = FALSE, fname = "dt_flux") {
   # remove days during experiment when no flux measurements
   dt <- dt[!is.na(site_id)]
+  # in existing data, these are erroneous data, not actually cold/hot
+  dt[TA <= 0 | TA > 45, TA := NA]
+  dt[PPFD_IN <= 0, PPFD_IN := 0] # cannot be negative
+  dt[VWC > 100, VWC := NA] # cannot be more than 100%
 
   # crude filtering of extreme outliers; units of umol/m2/s
   # add threshods as arguments
@@ -1252,12 +1256,33 @@ expand_to_complete_ts <- function(dt,
 # dt_gf <- fill_gaps_PPFD_dTA_VWC(dt_ts)
 fill_gaps_PPFD_dTA_VWC <- function(dt) {
   # predict PPFD_IN on basis of hour, separately for each week
-  dt[, PPFD_pred := predict(mgcv::gam(PPFD_IN ~ s(hour, bs = "cc"), data = .SD), newdata = .SD), by = week]
+  # check the data coverage is good enough every week
+  # get a hour x week table of data counts
+  a_counts <- table(!is.na(dt$PPFD_IN), dt$hour, dt$week)[2, , ]
+  a_counts <- a_counts > 0  # are there more than zero?
+  a_counts <- a_counts * 1  # convert to numeric count
+  a_counts <- colSums(a_counts)
+
+  if (any(a_counts < 10)) { # there are weeks with less than 10 hours with data
+    # put the week term inside the smoother so not all independent
+    dt[, PPFD_pred := predict(mgcv::gam(PPFD_IN ~ s(hour, bs = "cc", by = week), data = .SD), newdata = .SD)]
+  } else {
+    # put the week term outside the smoother so all independent
+    dt[, PPFD_pred := predict(mgcv::gam(PPFD_IN ~ s(hour, bs = "cc"), data = .SD), newdata = .SD), by = week]
+  }
   dt[PPFD_pred < 0 , PPFD_pred := 0] # cannot be negative
   # replace missing values with predictions
   dt[is.na(PPFD_IN), PPFD_IN := PPFD_pred]
+
   # predict dTA on basis of PPFD and hour, separately for each week
-  dt[, dTA_pred := predict(mgcv::gam(dTA ~ PPFD_IN + s(hour, bs = "cc"), data = .SD), newdata = .SD), by = week]
+  if (any(a_counts < 10)) { # there are weeks with less than 10 hours with data
+    # put the week term inside the smoother so not all independent
+    dt[, dTA_pred := predict(mgcv::gam(dTA ~ PPFD_IN + s(hour, bs = "cc", by = week), data = .SD), newdata = .SD)]
+  } else {
+    # put the week term outside the smoother so all independent
+    dt[, dTA_pred := predict(mgcv::gam(dTA ~ PPFD_IN + s(hour, bs = "cc"), data = .SD), newdata = .SD), by = week]
+  }
+
   # predict VWC on basis of time
   dt[, VWC_pred := predict(mgcv::gam(VWC ~ s(datets), data = .SD), newdata = .SD)]
   # replace missing values with predictions
