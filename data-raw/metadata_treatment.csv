@@ -11,10 +11,10 @@ EHD,yield1,Nx8,Compost + 75% fertiliser,#999999
 EHD,digestate1,control,Standard treatment,#E41A1C
 EHD,digestate1,D1,Digestate,#377EB8
 EHD,digestate1,D2,Digestate + Si,#4DAF4A
-HRG,diurnal1,control,No shading,
-HRG,diurnal1,S_30,30% shading,
-HRG,diurnal1,S_55,55% shading,
-HRG,diurnal1,S_85,85% shading,
+HRG,shading1,control,No shading,
+HRG,shading1,S_30,30% shading,
+HRG,shading1,S_55,55% shading,
+HRG,shading1,S_85,85% shading,
 EHD,split1,sx2,2 applications,#E41A1C
 EHD,split1,sx4,4 applications,#377EB8
 EHD,split1,sx6,6 applications,#4DAF4A

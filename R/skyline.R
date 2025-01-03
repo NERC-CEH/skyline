@@ -146,7 +146,7 @@ check_data_available <- function(this_date, this_site_id = "EHD",
 
 get_ghg_data <- function(v_fnames, this_date, this_site_id, this_expt_id, l_meta) {
   l_dt <- lapply(v_fnames, fread)
-  dt_ghg <- rbindlist(l_dt)
+  dt_ghg <- rbindlist(l_dt, fill = TRUE)
 
   # subset metadata to site and experiment
   dt_expt <- l_meta$dt_expt[this_site_id == site_id & this_expt_id == expt_id][1]
