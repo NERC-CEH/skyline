@@ -162,13 +162,20 @@ get_ghg_data <- function(v_fnames, this_date, this_site_id, this_expt_id, l_meta
     setnames(dt_ghg, c("H2O_ppm", "CO2_ppm", "chi_ch4", "N2O_ppm",
       "CavityPressure", "Tgas_degC"), v_names)
     ## TODO: set instrument-specific units here too
+  } else if (dt_expt$GHG_instrument == "Los Gatos") {
+    dt_ghg[, datect := as.POSIXct(Time, format = "%m/%d/%Y %H:%M:%OS")]
+    dt_ghg[, chi_co2 := 0] # add dummy variable for co2 - not measured
+    dt_ghg[, chi_ch4 := 0] # add dummy variable for methane - not measured
+    setnames(dt_ghg, c("[H2O]_ppm", "chi_co2", "chi_ch4", "[N2O]_ppm",
+      "GasP_torr", "GasT_C"), v_names, skip_absent = TRUE)
+    dt_ghg[, chi_co2 := chi_n2o] # add dummy variable for co2 - not measured
+    ## TODO: set instrument-specific units here too
   } else { # default to Picarro
     dt_ghg[, datect := as.POSIXct(EPOCH_TIME, origin = "1970-01-01")]
     setnames(dt_ghg, c("H2O", "CO2_dry", "CH4_dry", "N2O_dry",
       "CavityPressure", "CavityTemp"), v_names, skip_absent = TRUE)
     ## TODO: set instrument-specific units here too
   }
-
 
   dt_ghg[, datect := datect + seconds(dt_time$t_offset)]
 
@@ -233,9 +240,18 @@ get_soilmet_data <- function(v_fnames, o2_data = TRUE) {
   if ("TIMESTAMP" %in% names(dt)) dt[, datect := as.POSIXct(TIMESTAMP)]
 
   dt[, datect := lubridate::round_date(datect, "mins")]
-  dt[, RECORD := NULL]
+  if ("RECORD" %in% names(dt)) dt[, RECORD := NULL]
   setnames(dt, c("C_Temp_C_Avg", "QR_Avg", "QR_C_Avg"),
-    c("TA", "PPFD_IN", "PPFD_IN_ch"))
+    c("TA", "PPFD_IN", "PPFD_IN_ch"), skip_absent = TRUE)
+
+  # if missing, add dummy variables - could be improved
+  if ("TA" %!in% names(dt)) dt[, TA := NA]
+  if ("PPFD_IN" %!in% names(dt)) dt[, PPFD_IN := NA]
+  if ("PPFD_IN_ch" %!in% names(dt)) dt[, PPFD_IN_ch := NA]
+  if ("VWC" %!in% names(dt)) dt[, VWC := NA]
+  if ("TSoil" %!in% names(dt)) dt[, TSoil := NA]
+  if ("SoilPerm" %!in% names(dt)) dt[, SoilPerm := NA]
+  if ("SoilEC" %!in% names(dt)) dt[, SoilEC := NA]
 
   # If any column contains only NAs, it gets logical type and crashes melt
   # by trying to combine logical and numeric types in one column.
@@ -487,6 +503,7 @@ identify_deadband <- function(dt, initial_deadband_width = 150, final_deadband_w
   dt[t < initial_deadband_width | t > start_final_deadband, exclude := TRUE]
 
   if (method == "time fit") {
+    dt <- dt[!is.na(chi_co2)]
     dt[, w := dbeta(t / n, shape1 = 1.5, shape2 = 1.5)]
     # predict chi_co2, weighted towards the middle
     # and use this to filter out the nonlinear part

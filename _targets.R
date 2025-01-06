@@ -55,7 +55,8 @@ dryrun <- FALSE
 list(
   # an excel file containing all metadata; we track only the path name
   tar_target(fname_meta_xlsx, "data-raw/skyline_meta-data.xlsx",
-    format = "file"),
+    cue = tar_cue(mode = "always")
+  ),
 
  # convert to csv files whose contents we track
   tar_target(
@@ -123,6 +124,15 @@ list(
       write_all = write_all, n_min = n_min)
   ),
 
+  tar_target(
+    name = dt_chi_divine1,
+    command = get_data(v_dates, this_site_id = "SHP", this_expt_id = "divine1",
+      l_meta,
+      seq_id_to_plot = seq_id_to_plot,
+      method = method, dryrun = dryrun, save_plots = save_plots,
+      write_all = write_all, n_min = n_min)
+  ),
+
   # take the mid-point day as an example to plot
   tar_target(
     name = example_date,
@@ -170,13 +180,19 @@ list(
   ),
 
   tar_target(
+    name = dt_flux_divine1,
+    command = get_flux(dt_chi_divine1)
+  ),
+
+  tar_target(
     name = dt_flux_all,
     command = rbindlist(list(dt_flux_biochar1,
                              dt_flux_yield1,
                              dt_flux_split1,
                              dt_flux_digestate1,
                              dt_flux_shading1,
-                             dt_flux_mix1),
+                             dt_flux_mix1,
+                             dt_flux_divine1),
                              fill = TRUE)
   ),
 
