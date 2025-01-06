@@ -7,41 +7,45 @@ library(targets)
 
 source("_targets.R")
 
-Sys.setenv(TAR_PROJECT = "main")
-tar_outdated()
-
-Sys.setenv(TAR_PROJECT = "biochar1")
-tar_outdated()
-tar_make()
-tar_read(test)
-
-tar_outdated(starts_with("dt_"))
-tar_outdated(starts_with("manuscript_"))
-system.time(tar_make(starts_with("p_")))
-system.time(tar_make(starts_with("manuscript_")))
-system.time(tar_make())
-tar_load(starts_with("p_"))
-tar_load_everything(strict = FALSE)
-p_unfilt
-ggsave(p_unfilt,  file = "output/HRG/diurnal1/p_unfilt__2023-06-01.png")
-ggsave(p_chi_co2, file = "output/HRG/diurnal1/p_chi_co2_2023-06-01.png")
-ggsave(p_chi_ch4, file = "output/HRG/diurnal1/p_chi_ch4_2023-06-01.png")
-ggsave(p_chi_n2o, file = "output/HRG/diurnal1/p_chi_n2o_2023-06-01.png")
-
-p_chi_co2
-p_chi_ch4
-p_chi_n2o
-p_flux_co2
-p_flux_ch4
-p_flux_n2o
+# Sys.setenv(TAR_PROJECT = "main")
+# tar_outdated()
+# tar_make(starts_with("dt_"))
+#
+# Sys.setenv(TAR_PROJECT = "biochar1")
+# tar_outdated()
+# tar_make()
+# tar_read(test)
+#
+# tar_outdated(starts_with("dt_"))
+# tar_outdated(starts_with("manuscript_"))
+# system.time(tar_make(starts_with("p_")))
+# system.time(tar_make(starts_with("manuscript_")))
+# system.time(tar_make())
+# tar_load(starts_with("p_"))
+# tar_load_everything(strict = FALSE)
+# p_unfilt
+# ggsave(p_unfilt,  file = "output/HRG/diurnal1/p_unfilt__2023-06-01.png")
+# ggsave(p_chi_co2, file = "output/HRG/diurnal1/p_chi_co2_2023-06-01.png")
+# ggsave(p_chi_ch4, file = "output/HRG/diurnal1/p_chi_ch4_2023-06-01.png")
+# ggsave(p_chi_n2o, file = "output/HRG/diurnal1/p_chi_n2o_2023-06-01.png")
+#
+# p_chi_co2
+# p_chi_ch4
+# p_chi_n2o
+# p_flux_co2
+# p_flux_ch4
+# p_flux_n2o
 
 
 # processing only - select experiment in _targets file
 Sys.setenv(TAR_PROJECT = "processing_only")
 tar_outdated()
+# tar_make("dt")
 tar_make(starts_with("dt_"))
-
-
+tar_make(p_nonlinearity)
+# redo if need to change rmse threshold
+tar_load_everything(strict = FALSE)
+tar_make(starts_with("p_"))
 
 # for debugging
 lapply(v_pkgs, require, character.only = TRUE)
