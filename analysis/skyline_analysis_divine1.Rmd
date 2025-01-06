@@ -1,0 +1,57 @@
+---
+title: "Skyine Analysis - Shipton DIVINE Experiment"
+author: "Peter Levy"
+output:
+  html_document:
+    number_sections: yes
+    toc: no
+  pdf_document:
+    number_sections: yes
+    toc: no
+---
+
+```{r render, echo = FALSE, eval = FALSE}
+here::i_am("analysis/skyline_analysis_divine1.Rmd")
+#renv::install("ggeffects")
+library(here)
+library(quarto)
+library(rmarkdown)
+quarto_render(here("analysis/skyline_analysis_divine1.Rmd"))
+render(input = here("analysis", "skyline_analysis_divine1.Rmd"), output_file = here("analysis", "skyline_analysis_divine1.pdf"))
+render(input = here("analysis", "skyline_analysis_divine1.Rmd"), output_file = here("analysis", "skyline_analysis_divine1.html"))
+```
+
+Some provisional results from analysis of skyline data from DIVINE and ASSIST projects.
+
+<!--- { startup -->
+```{r startup, eval=TRUE, echo=FALSE, include=FALSE}
+here::i_am("analysis/skyline_analysis_divine1.Rmd")
+library(here)
+library(targets)
+library(ggplot2)
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE,
+  results = "hold", fig.show = "hold")
+Sys.setenv(TAR_PROJECT = "divine1")
+```
+
+# Shipton DIVINE Experiment
+
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Bar plot of treatment and chamber means with 95pc confidence intervals. Black symbols show the 95pc   confidence intervals in treatment means, accounting for the within-chamber autocorrelation."}
+tar_read(p_bar_n2o, store = here("_targets_divine1"))
+```
+
+```{r, echo = FALSE, fig.cap = "N2O flux over time by treatment."}
+tar_read(p_flux_n2o, store = here("_targets_divine1"))
+```
+
+```{r, eval = FALSE, echo = FALSE, fig.cap = "N2O flux versus temperature by treatment."}
+tar_read(p_flux_n2o_T, store = here("_targets_divine1"))
+```
+
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "N2O flux over time by treatment, showing N application dates as vertical black lines."}
+tar_read(p_flux_n2o_with_Nappl, store = here("_targets_divine1"))
+```
+
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Temperature data over time."}
+tar_read(p_T, store = here("_targets_divine1"))
+```

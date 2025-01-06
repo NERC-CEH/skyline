@@ -3,6 +3,7 @@
 # constants
 # define the conversion unit between g N and moles of N2O
 units::install_unit("mol_n2o", "28 g", "mol wt of N in N2O")
+units::install_unit("mol_c_co2_", "12 g", "mol wt of C in CO2")
 # units::install_unit(symbol = "ratio", def = "unitless",
   # name = "dimensionless ratio")
 
@@ -51,19 +52,42 @@ read_cs_data <- function(filename, return_option = "data") {
   }
 }
 
-read_metadata <- function(fname_meta = "data-raw/skyline_meta-data.xlsx") {
-  dt_site <- as.data.table(readxl::read_excel(fname_meta, sheet = "site"),
-    key = c("site_id"))
-  dt_expt <- as.data.table(readxl::read_excel(fname_meta, sheet = "experiment"),
-    key = c("site_id", "expt_id"))
-  dt_time <- as.data.table(readxl::read_excel(fname_meta, sheet = "analyser_time"))
-  dt_trmt <- as.data.table(readxl::read_excel(fname_meta, sheet = "treatment"))
-  dt_mgmt <- as.data.table(readxl::read_excel(fname_meta, sheet = "management_event"))
-  dt_cham <- as.data.table(readxl::read_excel(fname_meta, sheet = "chamber"))
-  dt_band <- as.data.table(readxl::read_excel(fname_meta, sheet = "deadbands"))
-  dt_badd <- as.data.table(readxl::read_excel(fname_meta, sheet = "bad_data"))
-  dt_ancl <- as.data.table(readxl::read_excel(fname_meta, sheet = "ancilliay_timeseries_byChamber"))
+convert_metadata_csv <- function(
+  fname_meta = "data-raw/skyline_meta-data.xlsx",
+  v_sheet = c(
+    "site",
+    "experiment",
+    "analyser_time",
+    "treatment",
+    "management_event",
+    "chamber",
+    "deadbands",
+    "bad_data",
+    "ancilliay_timeseries_byChamber"
+  )
+) {
+  v_fname_csv <- here("data-raw", paste0("metadata_", v_sheet, ".csv"))
+  for (i in seq_along(v_sheet)) {
+    print(paste(i, v_sheet[i]))
+    dt <- as.data.table(readxl::read_excel(fname_meta, sheet = v_sheet[i]))
+    fwrite(dt, file = v_fname_csv[i])
+  }
+  return(v_fname_csv)
+}
 
+read_metadata <- function(v_fname_csv) {
+  dt_site <- fread(v_fname_csv[1])
+  dt_expt <- fread(v_fname_csv[2])
+  dt_time <- fread(v_fname_csv[3])
+  dt_trmt <- fread(v_fname_csv[4])
+  dt_mgmt <- fread(v_fname_csv[5])
+  dt_cham <- fread(v_fname_csv[6])
+  dt_band <- fread(v_fname_csv[7])
+  dt_badd <- fread(v_fname_csv[8])
+  dt_ancl <- fread(v_fname_csv[9])
+
+  setkeyv(dt_site, "site_id")
+  setkeyv(dt_expt, c("site_id", "expt_id"))
   dt_cham[, chamber_id := as.factor(chamber_id)]
 
   return(list(
@@ -122,7 +146,7 @@ check_data_available <- function(this_date, this_site_id = "EHD",
 
 get_ghg_data <- function(v_fnames, this_date, this_site_id, this_expt_id, l_meta) {
   l_dt <- lapply(v_fnames, fread)
-  dt_ghg <- rbindlist(l_dt)
+  dt_ghg <- rbindlist(l_dt, fill = TRUE)
 
   # subset metadata to site and experiment
   dt_expt <- l_meta$dt_expt[this_site_id == site_id & this_expt_id == expt_id][1]
@@ -138,13 +162,20 @@ get_ghg_data <- function(v_fnames, this_date, this_site_id, this_expt_id, l_meta
     setnames(dt_ghg, c("H2O_ppm", "CO2_ppm", "chi_ch4", "N2O_ppm",
       "CavityPressure", "Tgas_degC"), v_names)
     ## TODO: set instrument-specific units here too
+  } else if (dt_expt$GHG_instrument == "Los Gatos") {
+    dt_ghg[, datect := as.POSIXct(Time, format = "%m/%d/%Y %H:%M:%OS")]
+    dt_ghg[, chi_co2 := 0] # add dummy variable for co2 - not measured
+    dt_ghg[, chi_ch4 := 0] # add dummy variable for methane - not measured
+    setnames(dt_ghg, c("[H2O]_ppm", "chi_co2", "chi_ch4", "[N2O]_ppm",
+      "GasP_torr", "GasT_C"), v_names, skip_absent = TRUE)
+    dt_ghg[, chi_co2 := chi_n2o] # add dummy variable for co2 - not measured
+    ## TODO: set instrument-specific units here too
   } else { # default to Picarro
     dt_ghg[, datect := as.POSIXct(EPOCH_TIME, origin = "1970-01-01")]
     setnames(dt_ghg, c("H2O", "CO2_dry", "CH4_dry", "N2O_dry",
       "CavityPressure", "CavityTemp"), v_names, skip_absent = TRUE)
     ## TODO: set instrument-specific units here too
   }
-
 
   dt_ghg[, datect := datect + seconds(dt_time$t_offset)]
 
@@ -209,9 +240,18 @@ get_soilmet_data <- function(v_fnames, o2_data = TRUE) {
   if ("TIMESTAMP" %in% names(dt)) dt[, datect := as.POSIXct(TIMESTAMP)]
 
   dt[, datect := lubridate::round_date(datect, "mins")]
-  dt[, RECORD := NULL]
+  if ("RECORD" %in% names(dt)) dt[, RECORD := NULL]
   setnames(dt, c("C_Temp_C_Avg", "QR_Avg", "QR_C_Avg"),
-    c("TA", "PPFD_IN", "PPFD_IN_ch"))
+    c("TA", "PPFD_IN", "PPFD_IN_ch"), skip_absent = TRUE)
+
+  # if missing, add dummy variables - could be improved
+  if ("TA" %!in% names(dt)) dt[, TA := NA]
+  if ("PPFD_IN" %!in% names(dt)) dt[, PPFD_IN := NA]
+  if ("PPFD_IN_ch" %!in% names(dt)) dt[, PPFD_IN_ch := NA]
+  if ("VWC" %!in% names(dt)) dt[, VWC := NA]
+  if ("TSoil" %!in% names(dt)) dt[, TSoil := NA]
+  if ("SoilPerm" %!in% names(dt)) dt[, SoilPerm := NA]
+  if ("SoilEC" %!in% names(dt)) dt[, SoilEC := NA]
 
   # If any column contains only NAs, it gets logical type and crashes melt
   # by trying to combine logical and numeric types in one column.
@@ -311,7 +351,7 @@ get_data <- function(v_dates = NULL, this_site_id = "HRG",
     dt[, seq_id := rleid(seq_id), by = chamber_id]
 
     # create measurement id consisting of expt_id, date, chamber id, and sequence id
-    dt[, mmnt_id := paste(this_expt_id, lubridate::date(dt$datect),  
+    dt[, mmnt_id := paste(this_expt_id, lubridate::date(dt$datect),
       formatC(as.numeric(as.character(chamber_id)), width = 2, format = "d", flag = "0"),
       formatC(seq_id, width = 2, format = "d", flag = "0"),     # third time that day that a measurement was taken for that chamber position)
       sep = "_")]
@@ -352,7 +392,7 @@ get_data <- function(v_dates = NULL, this_site_id = "HRG",
       t_resid_threshold = dt_band$t_resid_threshold,
       method = method, remove_deadband = FALSE)
     # re-check how many data are left; count only non-excluded points
-    dt[, n_filt := sum(!exclude), by = mmnt_id] 
+    dt[, n_filt := sum(!exclude), by = mmnt_id]
     # if too few data left (100?), or too many (ch position sensor stuck)
     # then remove the whole measurement sequence
     dt <- dt[n_filt > n_min & n_filt < 1800]
@@ -410,7 +450,7 @@ get_data <- function(v_dates = NULL, this_site_id = "HRG",
   dt_chi  <- rbindlist(l_dt_chi, fill=TRUE)
   # remove days during experiment when no flux measurements
   dt_chi <- dt_chi[!is.na(site_id)]
-  
+
   if (write_all & !dryrun) {
     # save to files
     fname <- paste0(pname_csv, "/dt_chi_", lubridate::date(v_dates[1]), "_",
@@ -450,7 +490,7 @@ filter_data <- function(site_id, expt_id, l_meta){
 
 identify_deadband <- function(dt, initial_deadband_width = 150, final_deadband_width = 150,
                             chpos_tolerance_mV = 6, t_resid_threshold = 1,
-                            method = c("time fit", "specified deadband only"), 
+                            method = c("time fit", "specified deadband only"),
                             remove_deadband = FALSE) {
 
   dt[, exclude := FALSE]
@@ -463,6 +503,7 @@ identify_deadband <- function(dt, initial_deadband_width = 150, final_deadband_w
   dt[t < initial_deadband_width | t > start_final_deadband, exclude := TRUE]
 
   if (method == "time fit") {
+    dt <- dt[!is.na(chi_co2)]
     dt[, w := dbeta(t / n, shape1 = 1.5, shape2 = 1.5)]
     # predict chi_co2, weighted towards the middle
     # and use this to filter out the nonlinear part
@@ -479,14 +520,14 @@ identify_deadband <- function(dt, initial_deadband_width = 150, final_deadband_w
   }
   # set weight to zero if excluded
   dt[exclude == TRUE, w := 0]
-  
+
   # shift time to start after deadband - affects nonlinear fit parameters
   # get first row in mmnt where data not excluded
   dt[, start_t := which(exclude == FALSE, arr.ind=TRUE)[1], by = mmnt_id]
   dt[, t := t - start_t]
   # remove un-needed variables
   dt[, start_t := NULL]
-  
+
   # if removing the deadband, subset the data to only those with exclude = FALSE
   if (remove_deadband) dt <- dt[exclude == FALSE]
   return(dt)
@@ -825,6 +866,10 @@ finding_Nema <- function(dt_flux, l_meta, save_file = FALSE) {
 filter_fluxes <- function(dt, save_file = FALSE, fname = "dt_flux") {
   # remove days during experiment when no flux measurements
   dt <- dt[!is.na(site_id)]
+  # in existing data, these are erroneous data, not actually cold/hot
+  dt[TA <= 0 | TA > 45, TA := NA]
+  dt[PPFD_IN <= 0, PPFD_IN := 0] # cannot be negative
+  dt[VWC > 100, VWC := NA] # cannot be more than 100%
 
   # crude filtering of extreme outliers; units of umol/m2/s
   # add threshods as arguments
@@ -896,8 +941,8 @@ bar_means_by_trmt <- function(dt, flux_name = "f_co2",
   dt_cham[, chamber_id := as.factor(chamber_id)]
 
   dt_cham[, f_se := f_sd / sqrt(n)]
-  dt_cham[, ci_lo := f - (f_se * 1.96)]
-  dt_cham[, ci_hi := f + (f_se * 1.96)]
+  dt_cham[, ci_lo := f - (f_se * 1.96)] # replace with crtitical t value f(n)
+  dt_cham[, ci_hi := f + (f_se * 1.96)] # replace with crtitical t value f(n)
 
 # Bar plots + jittered points + error bars
   p <- ggplot(dt_cham, aes(trmt_id, f, colour = trmt_id))
@@ -953,14 +998,14 @@ plot_diurnal <- function(dt_flux, split_by_day = FALSE, split_by_expt = FALSE) {
     dt_flux[, f_n2o_scaled   := scale(f_n2o)  ]
     dt_flux[, TA_scaled      := scale(TA)     ]
     dt_flux[, TSoil_scaled      := scale(TSoil)     ]
-    dt_flux[, PPFD_IN_scaled := scale(PPFD_IN)]  
+    dt_flux[, PPFD_IN_scaled := scale(PPFD_IN)]
   }
-  
+
   dt_flux[, h := lubridate::hour(datect) + lubridate::minute(datect) / 60]
 
   p <- ggplot(dt_flux, aes(h, PPFD_IN_scaled, colour = Variable))
   p <- p + scale_colour_manual(name="Variable",
-    values = c("PPFD" = "yellow", "TA" = "red",  "TSoil" = "orange", 
+    values = c("PPFD" = "yellow", "TA" = "red",  "TSoil" = "orange",
                "CO2 flux" = "green", "N2O flux" = "blue"))
   p <- p + geom_hline(yintercept = 0)
   p <- p + stat_smooth(aes(colour = "PPFD"), method = "gam")
@@ -994,9 +1039,9 @@ plot_chi_co2_with_rmse <- function(dt, n = 0, add_gam = FALSE, save_plot = FALSE
     dt <- dt[mmnt_id %in% v_mmnt_id]
   }
 
-  if (add_gam) dt[exclude == FALSE, chi_pred_gam := predict(gam(chi_co2 ~ s(t), 
+  if (add_gam) dt[exclude == FALSE, chi_pred_gam := predict(gam(chi_co2 ~ s(t),
     weights = w/mean(w), data = .SD)), by = mmnt_id]
-   
+
   p <- ggplot(dt[exclude == FALSE], aes(t, chi_co2, colour = rmse_f_co2, group = mmnt_id, weight = w))
   p <- p + geom_point() ## WIP setting alpha adds computation time - try without
   p <- p + geom_line(aes(y = chi_pred_co2), colour = "red", linewidth = 1)
@@ -1018,23 +1063,21 @@ get_flux <- function(dt) {
   dt <- calc_flux_nl(dt, gas_name = "co2")
   dt <- calc_flux_ln(dt, gas_name = "ch4")
   dt <- calc_flux_ln(dt, gas_name = "n2o")
-
-  # pname_csv <- here("output")
-  # fname <- paste0(pname_csv, "/dt_chi.csv")
-  # fwrite(dt, file = fname)
+  # we only need the first row - flux is duplicated
+  dt <- dt[, .SD[1], by = mmnt_id]
   return(dt)
 }
 
-calc_flux_nl <- function(dt, gas_name = "co2", use_STP = TRUE, PA = 1000, 
+calc_flux_nl <- function(dt, gas_name = "co2", use_STP = TRUE, PA = 1000,
                       TA = 15, use_weights = TRUE) {
-  
+
   # make variable names
   flux_var_name  <- paste0("f_",     gas_name)
   sigma_var_name <- paste0("sigma_f_", gas_name)
   rmse_var_name <- paste0("rmse_f_", gas_name)
   r2_var_name <- paste0("r2_f_", gas_name)
   pred_var_name <- paste0("chi_pred_", gas_name)
-  
+
   # calculate mean air density for each mmnt if we have the specific data
   if (use_STP) {
     rho <- PA * 100 / (8.31447 * (TA + 273.15))
@@ -1042,14 +1085,14 @@ calc_flux_nl <- function(dt, gas_name = "co2", use_STP = TRUE, PA = 1000,
     dt[, rho := PA * 100 / (8.31447 * (TA + 273.15))]
   }
   if (!use_weights) dt[, w := 1]
-  
+
   form_ln <- formula(paste0("chi_", gas_name, " ~ t"))
   form_nl <- formula(paste0("chi_", gas_name, " ~ t + I(t^2)"))
-  
+
   # identify whether nonlinear fit is convex (t^2 term negative) or concave_up  (t^2 term positive)
   dt[, dchi_dt_2 := coef(lm(form_nl, w = w, data = .SD))[3], by = mmnt_id]
   dt[, concave_up := FALSE]  # do nonlinear fit by default
-  dt[dchi_dt_2 > 0, concave_up := TRUE]    
+  dt[dchi_dt_2 > 0, concave_up := TRUE]
 
   # do nonlinear fit if not concave_up
   # we need the if block in case there are no cases, which gives an error
@@ -1060,7 +1103,7 @@ calc_flux_nl <- function(dt, gas_name = "co2", use_STP = TRUE, PA = 1000,
     dt[concave_up == FALSE, (flux_var_name) := dchi_dt        * rho * volume_m3 / area_m2]
     dt[concave_up == FALSE, (sigma_var_name) := sigma_dchi_dt * rho * volume_m3 / area_m2]
     dt[concave_up == FALSE, (r2_var_name) := summary(lm(form, w = w, data = .SD))$r.squared, by = mmnt_id]
-    dt[concave_up == FALSE, (rmse_var_name) := summary(lm(form, w = w, data = .SD))$sigma, by = mmnt_id]    
+    dt[concave_up == FALSE, (rmse_var_name) := summary(lm(form, w = w, data = .SD))$sigma, by = mmnt_id]
     dt[concave_up == FALSE, (pred_var_name) := predict(lm(form, w = w, data = .SD)), by = mmnt_id]
   }
 
@@ -1082,9 +1125,9 @@ calc_flux_nl <- function(dt, gas_name = "co2", use_STP = TRUE, PA = 1000,
   return(dt)
 }
 
-calc_flux_ln <- function(dt, gas_name = "co2", use_STP = TRUE, PA = 1000, 
+calc_flux_ln <- function(dt, gas_name = "co2", use_STP = TRUE, PA = 1000,
                       TA = 15, use_weights = TRUE) {
-  
+
   # make variable names
   flux_var_name  <- paste0("f_",        gas_name)
   sigma_var_name <- paste0("sigma_f_",  gas_name)
@@ -1099,7 +1142,7 @@ calc_flux_ln <- function(dt, gas_name = "co2", use_STP = TRUE, PA = 1000,
     dt[, rho := PA * 100 / (8.31447 * (TA + 273.15))]
   }
   if (!use_weights) dt[, w := 1]
-  
+
   form <- formula(paste0("chi_", gas_name, " ~ t"))
   dt[, dchi_dt   := coef(lm(form, w = w, data = .SD))[2], by = mmnt_id]
   dt[, sigma_dchi_dt := summary(lm(form, w = w, data = .SD))$coefficients[2, 2], by = mmnt_id]
@@ -1114,4 +1157,197 @@ calc_flux_ln <- function(dt, gas_name = "co2", use_STP = TRUE, PA = 1000,
   dt[, dchi_dt := NULL]
   dt[, sigma_dchi_dt := NULL]
   return(dt)
+}
+
+partition_fluxes <- function(dt, method = c("subtract_nighttime_R", "regression")) {
+  method  <- match.arg(method)
+  dt[,  month := month(datect)]
+  # normalise respiration to 10 deg C
+  dt[, dTA := TA - 10]
+  dt[, chamber_id := droplevels(chamber_id)]
+
+  if (method == "subtract_nighttime_R") {
+    m <- lm(f_co2 ~ dTA, data = dt[light == FALSE])
+    k_T <- coefficients(m)[2]
+    dt[light == FALSE, dR := dTA * k_T]
+    dt[light == FALSE, R_10 := f_co2 - dR]
+    dt[light == FALSE, R_10_ch := mean(R_10, na.rm = TRUE), by = .(chamber_id, month)]
+    # apply these values to all rows including light
+    dt[, R_10_ch := mean(R_10_ch, na.rm = TRUE), by = .(chamber_id, month)]
+    dt[, R := R_10_ch + dTA * k_T]
+    # calculate GPP by subtracting respiration
+    dt[, P := f_co2 - R]
+  } else if (method == "regression") {
+    # method 2
+    form <- formula(f_co2 ~ sqrt(PPFD_IN) + dTA)
+    dt <- dt[!is.na(PPFD_IN) & !is.na(dTA)]
+    dt[, f_co2_pred := predict(lm(form, data = .SD)), by = .(chamber_id, month)]
+    dt[, R_10 := coef(lm(form, data = .SD))[1], by = .(chamber_id, month)]
+    dt[, lue  := coef(lm(form, data = .SD))[2], by = .(chamber_id, month)]
+    dt[, k_T  := coef(lm(form, data = .SD))[3], by = .(chamber_id, month)]
+    dt[, f_co2_pred := lue * sqrt(PPFD_IN) + (R_10 + k_T * dTA)]
+    dt[, P := lue * sqrt(PPFD_IN)]
+    dt[, R := R_10 + k_T * dTA]
+  }
+  return(dt)
+}
+
+switch_sign_co2 <- function(dt,
+                    convention_in  = c("biological", "meterological")) {
+  convention_in  <- match.arg(convention_in)
+
+  # check input convention
+  # plot(f_co2 ~ TA, data = dt[PPFD_IN < 10])
+  # plot(f_co2 ~ sqrt(PPFD_IN), data = dt[PPFD_IN > 10])
+  slope_T <- lm(f_co2 ~ 0 + TA, data = dt[PPFD_IN < 10])$coefficients
+  slope_Q <- lm(f_co2 ~ sqrt(PPFD_IN), data = dt[PPFD_IN > 10])$coefficients[2]
+
+  if (slope_T < 0 & slope_Q > 0) {
+    convention <- "biological"
+  } else if (slope_T > 0 & slope_Q < 0) {
+    convention <- "meterological"
+  } else {
+    convention <- NA
+  }
+
+  if (convention != convention_in) stop("Attempting to switch sign convention
+    for CO2, but seems not to be in the sign convention you think it is.
+    Check the data.")
+
+  # switch to opposite sign convention
+  dt[,  f_co2 := -1 * f_co2]
+  return(dt)
+}
+
+# dtt <- expand_to_complete_ts(dt)
+expand_to_complete_ts <- function(dt,
+  cols = c("datect", "chamber_id", "PPFD_IN", "dTA", "VWC", "f_co2", "lue", "R_10", "k_T")
+  ) {
+  # get complete time series of hourly data for PPFD_IN and dTA
+  # start on first full day, end on last full day
+  start_ts <- round_date(min(dt$datect), "day") + days(1)
+  end_ts   <- round_date(max(dt$datect), "day") - days(1)
+  # generate a sequence of POSIXct values with a 1 hour interval
+  v_date_byhour <- seq(from = start_ts, to = end_ts, by = "1 hour")
+
+  # number of chambers
+  n_chamber <- length(unique(dt$chamber_id))
+  # final length should be equal this:
+  length(v_date_byhour) * n_chamber
+  # create chamber_id column
+  v_chamber_id <- rep(unique(dt$chamber_id), each = length(v_date_byhour))
+
+  # repeat the sequence for each chamber
+  v_date_byhour <- rep(v_date_byhour, n_chamber)
+  dt_time <- data.table(date_byhour = v_date_byhour, chamber_id = v_chamber_id)
+
+  # merge hourly time sequence with desired columns of raw data
+  # round time to nearest hour so we can merge with complete time series
+  dt[, datect := lubridate::round_date(datect, "hour")]
+  # cols <- c("date_byhour", "chamber_id", "PPFD_IN", "dTA", "VWC", "f_co2", "lue", "R_10", "k_T")
+  dt <- dt[, ..cols][dt_time, on = .(datect = date_byhour, chamber_id = chamber_id)]
+
+  # get numeric parts of date-time stamp
+  dt[, datets := as.numeric(datect)]
+  dt[, month := as.numeric(month(datect))]
+  dt[, week := as.numeric(week(datect))]
+  dt[, hour := as.numeric(hour(datect))]
+
+  # remove erroneous values
+  dt[PPFD_IN < 0 , PPFD_IN := 0]
+  dt[VWC > 70 , VWC := NA]
+
+  # get hourly means across all chambers for PPFD_IN and dTA
+  dt[, PPFD_IN := mean(PPFD_IN, na.rm = TRUE), by = datect]
+  dt[,  dTA := mean(dTA, na.rm = TRUE), by = datect]
+  dt[,  VWC := mean(VWC, na.rm = TRUE), by = datect]
+  # get means by chambers, weekly for CO2 flux, monthly for fitted parameters
+  dt[, f_co2 := mean(f_co2, na.rm = TRUE), by = .(chamber_id, week)]
+  dt[,  lue  := mean(lue, na.rm = TRUE), by = .(chamber_id, month)]
+  dt[,  R_10 := mean(R_10, na.rm = TRUE), by = .(chamber_id, month)]
+  dt[,  k_T  := mean(k_T, na.rm = TRUE), by = .(chamber_id, month)]
+
+  return(dt)
+}
+
+# dt_gf <- fill_gaps_PPFD_dTA_VWC(dt_ts)
+fill_gaps_PPFD_dTA_VWC <- function(dt) {
+  # predict PPFD_IN on basis of hour, separately for each week
+  # check the data coverage is good enough every week
+  # get a hour x week table of data counts
+  a_counts <- table(!is.na(dt$PPFD_IN), dt$hour, dt$week)[2, , ]
+  a_counts <- a_counts > 0  # are there more than zero?
+  a_counts <- a_counts * 1  # convert to numeric count
+  a_counts <- colSums(a_counts)
+
+  if (any(a_counts < 10)) { # there are weeks with less than 10 hours with data
+    # put the week term inside the smoother so not all independent
+    dt[, PPFD_pred := predict(mgcv::gam(PPFD_IN ~ s(hour, bs = "cc", by = week), data = .SD), newdata = .SD)]
+  } else {
+    # put the week term outside the smoother so all independent
+    dt[, PPFD_pred := predict(mgcv::gam(PPFD_IN ~ s(hour, bs = "cc"), data = .SD), newdata = .SD), by = week]
+  }
+  dt[PPFD_pred < 0 , PPFD_pred := 0] # cannot be negative
+  # replace missing values with predictions
+  dt[is.na(PPFD_IN), PPFD_IN := PPFD_pred]
+
+  # predict dTA on basis of PPFD and hour, separately for each week
+  if (any(a_counts < 10)) { # there are weeks with less than 10 hours with data
+    # put the week term inside the smoother so not all independent
+    dt[, dTA_pred := predict(mgcv::gam(dTA ~ PPFD_IN + s(hour, bs = "cc", by = week), data = .SD), newdata = .SD)]
+  } else {
+    # put the week term outside the smoother so all independent
+    dt[, dTA_pred := predict(mgcv::gam(dTA ~ PPFD_IN + s(hour, bs = "cc"), data = .SD), newdata = .SD), by = week]
+  }
+
+  # predict VWC on basis of time
+  dt[, VWC_pred := predict(mgcv::gam(VWC ~ s(datets), data = .SD), newdata = .SD)]
+  # replace missing values with predictions
+  dt[is.na(dTA), dTA := dTA_pred]
+  dt[is.na(VWC), VWC := VWC_pred]
+  # remove unneeded columns
+  dt[, PPFD_pred := NULL]
+  dt[, dTA_pred := NULL]
+  dt[, VWC_pred := NULL]
+  return(dt)
+}
+
+# dtc <- get_cum_f_co2(dtts)
+get_cum_f_co2 <- function(dt) {
+  setorder(dt, chamber_id, datect)
+  interval_length <- difftime(dt$datect[2], dt$datect[1], units = "secs")
+  if (interval_length != 3600) stop("I haven't checked this works time_interval
+    other than an hour, although it should")
+  secs_per_interval <- set_units(as.numeric(interval_length), s)
+
+  # calculate flux terms
+  dt[, f_co2_pred := lue * sqrt(PPFD_IN) + (R_10 + k_T * dTA)]
+  dt[, P := lue * sqrt(PPFD_IN)]
+  dt[, R := R_10 + k_T * dTA]
+
+  # accumulate these
+  dt[, P_cum := cumsum(P), by = chamber_id]
+  dt[, R_cum := cumsum(R), by = chamber_id]
+  dt[, f_co2_cum := cumsum(f_co2_pred), by = chamber_id]
+  dt[, f_co2_obs_cum := cumsum(f_co2), by = chamber_id]
+
+  # convert units to g / m^2
+  dt[, P_cum := set_units(P_cum, umol_c_co2_/m^2/s)]
+  dt[, P_cum := set_units(P_cum * secs_per_interval, g / m^2)]
+  dt[, R_cum := set_units(R_cum, umol_c_co2_/m^2/s)]
+  dt[, R_cum := set_units(R_cum * secs_per_interval, g / m^2)]
+  dt[, f_co2_cum := set_units(f_co2_cum, umol_c_co2_/m^2/s)]
+  dt[, f_co2_cum := set_units(f_co2_cum * secs_per_interval, g / m^2)]
+  dt[, f_co2_obs_cum := set_units(f_co2_obs_cum, umol_c_co2_/m^2/s)]
+  dt[, f_co2_obs_cum := set_units(f_co2_obs_cum * secs_per_interval, g / m^2)]
+  return(dt)
+}
+
+plot_cum_f_co2 <- function(dt) {
+  p <- ggplot(dt, aes(datect, f_co2_cum))
+  p <- p + geom_line(aes(y = P_cum), colour = "green")
+  p <- p + geom_line(aes(y = R_cum), colour = "red")
+  p <- p + geom_line(aes(y = f_co2_cum), colour = "blue")
+  p <- p + facet_wrap(~ chamber_id)
+  return(p)
 }

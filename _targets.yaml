@@ -7,3 +7,18 @@ biochar1:
 digestate1:
   script: _targets_digestate1.R
   store: _targets_digestate1
+split1:
+  script: _targets_split1.R
+  store: _targets_split1
+yield1:
+  script: _targets_yield1.R
+  store: _targets_yield1
+mix1:
+  script: _targets_mix1.R
+  store: _targets_mix1
+shading1:
+  script: _targets_shading1.R
+  store: _targets_shading1
+divine1:
+  script: _targets_divine1.R
+  store: _targets_divine1

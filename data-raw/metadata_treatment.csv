@@ -1,0 +1,30 @@
+site_id,expt_id,trmt_id,trmt_name,colour
+EHD,yield1,control,0% fertiliser,#E41A1C
+EHD,yield1,Nx1,50% fertiliser,#377EB8
+EHD,yield1,Nx2,75% fertiliser,#4DAF4A
+EHD,yield1,Nx3,100% fertiliser,#984EA3
+EHD,yield1,Nx4,Clover,#FF7F00
+EHD,yield1,Nx5,Clover + 50% fertiliser,#FFFF33
+EHD,yield1,Nx6,Clover + 75% fertiliser,#A65628
+EHD,yield1,Nx7,Compost + 50% fertiliser,#F781BF
+EHD,yield1,Nx8,Compost + 75% fertiliser,#999999
+EHD,digestate1,control,Standard treatment,#E41A1C
+EHD,digestate1,D1,Digestate,#377EB8
+EHD,digestate1,D2,Digestate + Si,#4DAF4A
+HRG,shading1,control,No shading,
+HRG,shading1,S_30,30% shading,
+HRG,shading1,S_55,55% shading,
+HRG,shading1,S_85,85% shading,
+EHD,split1,sx2,2 applications,#E41A1C
+EHD,split1,sx4,4 applications,#377EB8
+EHD,split1,sx6,6 applications,#4DAF4A
+EHD,biochar1,b1,Mineral N,#E41A1C
+EHD,biochar1,b2,Biochar + Mineral N,#377EB8
+EHD,biochar1,b3,Nutrisphere-N,#4DAF4A
+PDF,mix1,control,Control,#109b01
+PDF,mix1,B1,10t/ha biochar,#404a3c
+PDF,mix1,B2,30t/ha biochar,#a3af9e
+PDF,mix1,In,Inhibitor,#00a1ea
+PDF,mix1,RD,Rockdust,#006cb2
+SHP,divine1,block1,Dummy1,#109b01
+SHP,divine1,block2,Dummy2,#377EB8

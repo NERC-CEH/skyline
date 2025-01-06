@@ -5,6 +5,7 @@
 here::i_am("./run_skyline.R")
 library(targets)
 source("_targets.R")
+Sys.setenv(TAR_PROJECT = "main")
 tar_outdated()
 
 # serial
