@@ -22,3 +22,6 @@ shading1:
 divine1:
   script: _targets_divine1.R
   store: _targets_divine1
+diurnal:
+  script: _targets_diurnal.R
+  store: _targets_diurnal

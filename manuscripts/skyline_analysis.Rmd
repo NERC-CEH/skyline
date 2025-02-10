@@ -31,7 +31,7 @@ here::i_am("manuscripts/skyline_analysis.Rmd")
 library(here)
 library(targets)
 library(ggplot2)
-knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE, 
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE,
   results = "hold", fig.show = "hold")
 ```
 <!--- } -->
@@ -51,8 +51,12 @@ tar_read(p_diurnal_by_expt, store = here("_targets"))
 tar_read(p_diurnal_by_day, store = here("_targets"))
 ```
 
-```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Diurnal variation in CO2 flux, N2O flux, PPFD and air temperature, averaged separately for each experiment and for each day. Separating by each experiment and day gives equal weight to both experiment and days with little variation, so shows relative variation rather than absolute variation."}
-tar_read(p_diurnal_by_day_by_expt, store = here("_targets"))
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Diurnal variation in CO2 flux, N2O flux, PPFD and air temperature, averaged separately for each experiment and for each day but pooling all chambers within an experiment and day. Separating by each experiment and day gives equal weight to both experiment and days with little variation, so shows relative variation rather than absolute variation."}
+tar_read(p_diurnal_by_day_by_expt_not_chamber, store = here("_targets"))
+```
+
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Diurnal variation in CO2 flux, N2O flux, PPFD and air temperature, averaged separately for each experiment and for each chamber on each day. Separating by each experiment and day gives equal weight to both experiment and days with little variation, so shows relative variation rather than absolute variation."}
+tar_read(p_diurnal_by_day_by_expt_by_chamber, store = here("_targets"))
 ```
 
 <!--- } -->

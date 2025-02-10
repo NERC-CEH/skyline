@@ -8,6 +8,7 @@ library(targets)
 # tar_config_set(script = "_targets_shading1.R", store = "_targets_shading1", project = "shading1")
 # tar_config_set(script = "_targets_split1.R", store = "_targets_split1", project = "split1")
 # tar_config_set(script = "_targets_yield1.R", store = "_targets_yield1", project = "yield1")
+# tar_config_set(script = "_targets_diurnal.R", store = "_targets_diurnal", project = "diurnal")
 
 source("_targets.R")
 
@@ -27,6 +28,9 @@ tar_make()
 Sys.setenv(TAR_PROJECT = "split1")
 tar_make()
 Sys.setenv(TAR_PROJECT = "yield1")
+tar_make()
+
+Sys.setenv(TAR_PROJECT = "diurnal")
 tar_make()
 
 tar_outdated()

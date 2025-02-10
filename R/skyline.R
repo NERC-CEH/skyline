@@ -972,22 +972,29 @@ bar_means_by_trmt <- function(dt, flux_name = "f_co2",
   return(p)
 }
 
-plot_diurnal <- function(dt_flux, split_by_day = FALSE, split_by_expt = FALSE) {
+plot_diurnal <- function(dt_flux, split_by_day = FALSE, split_by_expt = FALSE,
+  split_by_chamber = FALSE) {
 
   dt_flux[, date_day := lubridate::round_date(datect, "days")]
-  if (split_by_day & split_by_expt) {
+  if (split_by_day & split_by_expt & split_by_chamber) {
     dt_flux[, f_co2_scaled   := scale(f_co2),    by = .(date_day, expt_id, chamber_id)]
     dt_flux[, f_n2o_scaled   := scale(f_n2o),    by = .(date_day, expt_id, chamber_id)]
     dt_flux[, TA_scaled      := scale(TA),       by = .(date_day, expt_id, chamber_id)]
     dt_flux[, TSoil_scaled      := scale(TSoil), by = .(date_day, expt_id, chamber_id)]
     dt_flux[, PPFD_IN_scaled := scale(PPFD_IN),  by = .(date_day, expt_id, chamber_id)]
-  } else if (!split_by_day & split_by_expt) {
+  } else if (!split_by_day & split_by_expt & split_by_chamber) {
     dt_flux[, f_co2_scaled   := scale(f_co2),    by = .(expt_id, chamber_id)]
     dt_flux[, f_n2o_scaled   := scale(f_n2o),    by = .(expt_id, chamber_id)]
     dt_flux[, TA_scaled      := scale(TA),       by = .(expt_id, chamber_id)]
     dt_flux[, TSoil_scaled      := scale(TSoil), by = .(expt_id, chamber_id)]
     dt_flux[, PPFD_IN_scaled := scale(PPFD_IN),  by = .(expt_id, chamber_id)]
-  } else if (split_by_day & !split_by_expt) {
+  } else if (split_by_day & split_by_expt & !split_by_chamber) {
+    dt_flux[, f_co2_scaled   := scale(f_co2),    by = .(date_day, expt_id)]
+    dt_flux[, f_n2o_scaled   := scale(f_n2o),    by = .(date_day, expt_id)]
+    dt_flux[, TA_scaled      := scale(TA),       by = .(date_day, expt_id)]
+    dt_flux[, TSoil_scaled      := scale(TSoil), by = .(date_day, expt_id)]
+    dt_flux[, PPFD_IN_scaled := scale(PPFD_IN),  by = .(date_day, expt_id)]
+  } else if (split_by_day & !split_by_expt & !split_by_chamber) {
     dt_flux[, f_co2_scaled   := scale(f_co2),   by = date_day]
     dt_flux[, f_n2o_scaled   := scale(f_n2o),   by = date_day]
     dt_flux[, TA_scaled      := scale(TA),      by = date_day]
@@ -1185,6 +1192,7 @@ partition_fluxes <- function(dt, method = c("subtract_nighttime_R", "regression"
     dt[, R_10 := coef(lm(form, data = .SD))[1], by = .(chamber_id, month)]
     dt[, lue  := coef(lm(form, data = .SD))[2], by = .(chamber_id, month)]
     dt[, k_T  := coef(lm(form, data = .SD))[3], by = .(chamber_id, month)]
+    # this line is unneccessary duplication
     dt[, f_co2_pred := lue * sqrt(PPFD_IN) + (R_10 + k_T * dTA)]
     dt[, P := lue * sqrt(PPFD_IN)]
     dt[, R := R_10 + k_T * dTA]
