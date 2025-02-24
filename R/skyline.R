@@ -252,6 +252,8 @@ get_soilmet_data <- function(v_fnames, o2_data = TRUE) {
   if ("TSoil" %!in% names(dt)) dt[, TSoil := NA]
   if ("SoilPerm" %!in% names(dt)) dt[, SoilPerm := NA]
   if ("SoilEC" %!in% names(dt)) dt[, SoilEC := NA]
+  # we want VWC as a fraction not a percentage; convert if not all missing values
+  if (!is.na(mean(dt$VWC, na.rm = TRUE)) & mean(dt$VWC, na.rm = TRUE) > 1) dt[, VWC := VWC / 100]
 
   # If any column contains only NAs, it gets logical type and crashes melt
   # by trying to combine logical and numeric types in one column.
