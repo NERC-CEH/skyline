@@ -43,8 +43,8 @@ v_dates <- NULL
 # v_dates <- as.POSIXct(seq(from = as.Date(start_date), to = as.Date(end_date), by="day"))
 
 seq_id_to_plot <- 5   # default to 1 as night/dark flux so should be clear if something is wrong with deadbands
-save_plots <- FALSE   # save plots for all gases containing every flux per chamber each day
-write_all <- FALSE   # combine files for days processes
+save_plots <- TRUE   # save plots for all gases containing every flux per chamber each day
+write_all <- TRUE   # combine files for days processes
 
 n_min <- 100
 method <-  "time fit"  # "time fit" or "specified deadband only"
@@ -54,8 +54,7 @@ dryrun <- FALSE
 #### list of targets: ####
 list(
   # an excel file containing all metadata; we track only the path name
-  tar_target(fname_meta_xlsx, "data-raw/skyline_meta-data.xlsx",
-    cue = tar_cue(mode = "always")
+  tar_target(fname_meta_xlsx, "data-raw/skyline_meta-data.xlsx"
   ),
 
  # convert to csv files whose contents we track

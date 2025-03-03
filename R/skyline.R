@@ -252,8 +252,8 @@ get_soilmet_data <- function(v_fnames, o2_data = TRUE) {
   if ("TSoil" %!in% names(dt)) dt[, TSoil := NA]
   if ("SoilPerm" %!in% names(dt)) dt[, SoilPerm := NA]
   if ("SoilEC" %!in% names(dt)) dt[, SoilEC := NA]
-  # we want VWC as a fraction not a percentage; convert if not all missing values
-  if (!is.na(mean(dt$VWC, na.rm = TRUE)) & mean(dt$VWC, na.rm = TRUE) > 1) dt[, VWC := VWC / 100]
+  # we want VWC as a fraction not a percentage
+  if (mean(dt$VWC, na.rm = TRUE) > 1) dt[, VWC := VWC / 100]
 
   # If any column contains only NAs, it gets logical type and crashes melt
   # by trying to combine logical and numeric types in one column.
@@ -654,7 +654,7 @@ plot_flux <- function(dt_flux, flux_name = "f_co2",
 }
 
 plot_n2o_flux <- function(dt, flux_name = "f_n2o",
-                          sigma_name = "sigma_n2o",
+                          sigma_name = NULL,
                           this_site_id = "HRG", this_expt_id = "diurnal1",
                           l_meta, mult = 1000, y_min = NA, y_max = NA,
                           save_plot = FALSE) {
@@ -668,23 +668,56 @@ plot_n2o_flux <- function(dt, flux_name = "f_n2o",
   dt <- dt[site_id == this_site_id & expt_id == this_expt_id]
 
   dt[, f     := get(flux_name) * mult]
-  dt[, sigma := get(sigma_name) * mult]
-  dt[, ci_lo := f - (sigma * 1.96)]
-  dt[, ci_hi := f + (sigma * 1.96)]
-  if (is.na(y_max)) y_max <- max(dt[, ci_hi])
-  if (is.na(y_min)) y_min <- min(dt[, ci_lo])
+  if (!is.null(sigma_name)) {
+    dt[, sigma := get(sigma_name) * mult]
+    dt[, ci_lo := f - (sigma * 1.96)]
+    dt[, ci_hi := f + (sigma * 1.96)]
+    if (is.na(y_max)) y_max <- max(dt[, ci_hi])
+    if (is.na(y_min)) y_min <- min(dt[, ci_lo])
+  }
 
-  p <- ggplot(dt, aes(datect, f))
+  p <- ggplot(drop_units(dt), aes(datect, f))
   p <- p + geom_vline(data = dt_mgmt, aes(xintercept = start))
   p <- p + geom_hline(yintercept = 0)
   # p <- p + geom_point(aes(colour = as.factor(chamber_id)))
   p <- p + geom_point(aes(colour = trmt_id))
-  p <- p + geom_errorbar(aes(ymin = ci_lo, ymax = ci_hi, colour = trmt_id))
+  if (!is.null(sigma_name)) p <- p + geom_errorbar(aes(ymin = ci_lo, ymax = ci_hi, colour = trmt_id))
   # p <- p + facet_wrap(~ trmt_id)
   p <- p + ylab(flux_name)
   p <- p + stat_smooth()
-  p <- p + ylim(y_min, y_max)
+  if (!is.na(y_max) || !is.na(y_min)) p <- p + ylim(y_min, y_max)
 
+  if (save_plot) {
+    fname <- here("output", this_site_id, this_expt_id, "png",
+      paste0(flux_name, "_timeseries_with_treatment.png"))
+    ggsave(p, file = fname, type = "cairo")
+  }
+  return(p)
+}
+
+
+plot_nema_vs_time <- function(dt, this_site_id = "EHD", this_expt_id = "biochar1",
+                          l_meta, mult = 1000,
+                          save_plot = FALSE) {
+  # subset metadata to site and experiment
+  dt_mgmt <- l_meta$dt_mgmt[
+    this_site_id == site_id &
+      this_expt_id == expt_id]
+  names(dt_mgmt) <- make.names(names(dt_mgmt))
+
+  # subset to just this experiment
+  dt <- dt[site_id == this_site_id & expt_id == this_expt_id & chamber_id == "1"]
+
+  p <- ggplot(drop_units(dt[site_id == this_site_id & expt_id == this_expt_id]), aes(datect, f_n2o))
+  p <- p + geom_vline(data = dt_mgmt, aes(xintercept = start))
+  p <- p + geom_hline(yintercept = 0)
+  p <- p + geom_point(colour = "black")
+  p <- p + geom_point(aes(y = VWC/800), colour = "orange")
+  p <- p + geom_point(aes(y = TSoil/300), colour = "red")
+  p <- p + geom_line(aes(y = N_ema_010), colour = "blue")
+  p <- p + geom_line(aes(y = N_ema_050_4), colour = "green")
+  # p <- p + facet_wrap(~ chamber_id)
+p
   if (save_plot) {
     fname <- here("output", this_site_id, this_expt_id, "png",
       paste0(flux_name, "_timeseries_with_treatment.png"))
@@ -723,20 +756,21 @@ plot_n2o_flux_diurnal <- function(dt_flux, flux_name = "f_N2O_dry",
 }
 
 plot_flux_vs_xvar <- function(dt, flux_name = "f_co2",
-                              sigma_name = "sigma_f_co2", xvar_name = "datect",
+                              sigma_name = NULL, xvar_name = "datect",
                               colour_name = "trmt_id", facet_name = "trmt_id",
                               colour_is_factor = TRUE, rows_only = FALSE,
                               mult = 1, y_min = NA, y_max = NA,
                               save_plot = FALSE) {
 
-  dt[, f     := get(flux_name)  * mult]
-  dt[, sigma := get(sigma_name) * mult]
   dt[, x     := get(xvar_name)]
-  dt[, ci_lo := f - (sigma * 1.96)]
-  dt[, ci_hi := f + (sigma * 1.96)]
-  if (is.na(y_max)) y_max <- max(dt[, ci_hi])
-  if (is.na(y_min)) y_min <- min(dt[, ci_lo])
-
+  dt[, f     := get(flux_name)  * mult]
+  if (!is.null(sigma_name)) {
+    dt[, sigma := get(sigma_name) * mult]
+    dt[, ci_lo := f - (sigma * 1.96)]
+    dt[, ci_hi := f + (sigma * 1.96)]
+    if (is.na(y_max)) y_max <- max(dt[, ci_hi])
+    if (is.na(y_min)) y_min <- min(dt[, ci_lo])
+  }
   if (colour_is_factor) {
     p <- ggplot(dt, aes(x, f, colour = as.factor(get(colour_name))))
     p <- p + scale_colour_viridis(option="viridis", discrete = TRUE)
@@ -745,7 +779,7 @@ plot_flux_vs_xvar <- function(dt, flux_name = "f_co2",
     p <- p + scale_colour_viridis(option="viridis")
   }
   p <- p + geom_point()
-  p <- p + geom_errorbar(aes(ymin = ci_lo, ymax = ci_hi))
+  if (!is.null(sigma_name)) p <- p + geom_errorbar(aes(ymin = ci_lo, ymax = ci_hi))
   p <- p + geom_hline(yintercept = 0)
   #p <- p + facet_wrap(~ get(facet_name))
   if (rows_only) {
@@ -754,7 +788,7 @@ plot_flux_vs_xvar <- function(dt, flux_name = "f_co2",
     p <- p + facet_wrap(~ get(facet_name))
   }
   p <- p + ylab(flux_name) + xlab(xvar_name) + labs(colour = NULL)
-  p <- p + ylim(y_min, y_max)
+  if (!is.na(y_max)) p <- p + ylim(y_min, y_max)
 
   if (save_plot) {
     # use site & expt in first row for file name
@@ -857,12 +891,27 @@ finding_Nema <- function(dt_flux, l_meta, save_file = FALSE) {
 
   dt_flux[,  trmt_uid := paste0(expt_id, "_", trmt_id)]
   dt_flux[,  datect := lubridate::floor_date(datect, "day")]
-  unique(dt_flux$trmt_uid)
-  unique(dt_date$trmt_uid)
-  names(dt_flux)
-  names(dt_date)
-  dt_flux <- dt_flux[dt_date, on = .(trmt_uid = trmt_uid, datect = datect)]
+
+# remove duplicates from dt_date
+##*WIP: not sure if this should be placed earlier?
+dt_date[, event_uid := NULL]
+dt_date <- unique(dt_date, by = c("trmt_uid", "datect"))
+
+  dt_flux <- dt_date[dt_flux, on = .(trmt_uid = trmt_uid, datect = datect)]
+
   return(dt_flux)
+}
+
+filter_env_vars <- function(dt) {
+  # # remove days during experiment when no flux measurements
+  # dt <- dt[!is.na(site_id)]
+  # # in existing data, these are erroneous data, not actually cold/hot
+  # dt[TA <= 0 | TA > 45, TA := NA]
+  # dt[PPFD_IN <= 0, PPFD_IN := 0] # cannot be negative
+  # dt[VWC > 100, VWC := NA] # cannot be more than 100%
+  # # we want VWC as a fraction not a percentage
+  if (mean(dt$VWC, na.rm = TRUE) > 1) dt[, VWC := VWC / 100]
+  return(dt)
 }
 
 filter_fluxes <- function(dt, save_file = FALSE, fname = "dt_flux") {
@@ -876,7 +925,7 @@ filter_fluxes <- function(dt, save_file = FALSE, fname = "dt_flux") {
   # crude filtering of extreme outliers; units of umol/m2/s
   # add threshods as arguments
   dt <- dt[f_co2 > -50 & f_co2 < 50]
-  dt <- dt[f_n2o > -0.1 & f_n2o < 0.1]
+  dt <- dt[f_n2o > -0.01 & f_n2o < 0.1]
   dt <- dt[rmse_f_n2o < 0.021]
   if (save_file) fwrite(dt, file = here("output", paste0(fname, ".csv")))
   if (save_file)  qsave(dt, file = here("output", paste0(fname, ".qs")))
@@ -1024,7 +1073,7 @@ plot_diurnal <- function(dt_flux, split_by_day = FALSE, split_by_expt = FALSE,
   p <- p + stat_smooth(aes(y = f_n2o_scaled, colour = "N2O flux"), method = "gam")
   if (split_by_expt) p <- p + facet_wrap(~ expt_id)
   p <- p + xlab("Hour") + ylab("Scaled variation (sd units)")
-  p
+  # p
   return(p)
 }
 
@@ -1360,4 +1409,136 @@ plot_cum_f_co2 <- function(dt) {
   p <- p + geom_line(aes(y = f_co2_cum), colour = "blue")
   p <- p + facet_wrap(~ chamber_id)
   return(p)
+}
+
+plot_vwc_response <- function(dt, alpha1 = 4,
+    alpha2 = 6, save_plot = FALSE) {
+
+  # testing beta parameters
+  # VWC <- seq(0, 1, 0.01)
+  # dt_vwc <- data.table(
+  #   VWC,
+  #   f_vwc = dbeta(VWC, shape1 = alpha1, shape2 = alpha2)
+  # )
+  # p <- ggplot(dt_vwc, aes(VWC, f_vwc))
+  # p <- p + geom_line()
+  # p
+  dt[, f_n2o_rel := f_n2o/max(f_n2o), by = expt_id]
+  dt[, f_vwc := dbeta(VWC, shape1 = alpha1, shape2 = alpha2)]
+  dt[, f_vwc := f_vwc / max(f_vwc, na.rm = TRUE)]
+
+  p <- ggplot(drop_units(dt), aes(VWC, f_n2o_rel))
+  p <- p + geom_hline(yintercept = 0)
+  p <- p + geom_point(colour = "black")
+  p <- p + geom_line(aes(y = f_vwc), colour = "orange")
+  p <- p + facet_wrap(~ expt_id)
+
+  if (save_plot) {
+    fname <- here("output", "vwc_response.png")
+    ggsave(p, file = fname, type = "cairo")
+  }
+  return(p)
+}
+
+plot_T_response <- function(dt,
+    x_varname = "TSoil",
+    logy = TRUE,
+    save_plot = FALSE) {
+
+  # should update filter_fluxes
+  dt <- dt[log(f_n2o) > -20 & f_n2o < 0.1]
+
+  p <- ggplot(drop_units(dt), aes(get(x_varname), f_n2o))
+  p <- p + geom_hline(yintercept = 0)
+  p <- p + geom_point(aes(colour = expt_id))
+  p <- p + stat_smooth(method = "lm")
+  p <- p + xlab(x_varname)
+  if (logy) p <- p + scale_y_continuous(trans = scales::log_trans())
+
+  if (save_plot) {
+    fname <- here("output", "T_response.png")
+    ggsave(p, file = fname, type = "cairo")
+  }
+  return(p)
+}
+
+
+plot_nema_response <- function(dt, save_plot = FALSE) {
+
+  # should update filter_fluxes
+  dt <- dt[log(f_n2o) > -20 & f_n2o < 0.1]
+
+  p <- ggplot(drop_units(dt), aes(N_ema_010, f_n2o))
+  p <- p + geom_hline(yintercept = 0)
+  p <- p + geom_point(colour = "black")
+  p <- p + geom_point(aes(x = N_ema_025), colour = "blue")
+  p <- p + geom_point(aes(x = N_ema_050_4), colour = "green")
+  p <- p + stat_smooth(method = "lm")
+  if (logy) p <- p + scale_y_continuous(trans = scales::log_trans())
+  # p <- p + facet_wrap(~ chamber_id)
+p
+  if (save_plot) {
+    fname <- here("output", this_site_id, this_expt_id, "png",
+      paste0(flux_name, "_timeseries_with_treatment.png"))
+    ggsave(p, file = fname, type = "cairo")
+  }
+  return(p)
+}
+
+
+plot_hist_fn2o <- function(dt, logy = FALSE, save_plot = FALSE) {
+
+  # should update filter_fluxes
+  dt <- dt[log(f_n2o) > -20 & f_n2o < 0.1]
+
+  p <- ggplot(drop_units(dt), aes(x = f_n2o))
+  if (logy) p <- ggplot(drop_units(dt), aes(x = log(f_n2o)))
+  p <- p + geom_histogram()
+  p <- p + facet_wrap(~ expt_id)
+  p
+  if (save_plot) {
+    fname <- here("output", "fn2o_histogram_by_expt.png")
+    ggsave(p, file = fname, type = "cairo")
+  }
+  return(p)
+}
+
+add_unique_chamber_id <- function(dt) {
+  dt[,  chamber_uid := paste0(expt_id, "_", chamber_id)]
+  return(dt)
+}
+
+add_unique_chamber_id <- function(dt) {
+  dt[,  chamber_uid := paste0(expt_id, "_", chamber_id)]
+  return(dt)
+}
+
+fit_model <- function(dt) {
+  m <- lm(log(f_n2o) ~ f_vwc + TA + TSoil +
+    N_ema_010_1 + N_ema_025_1 + N_ema_050_1 +
+    N_ema_010_4 + N_ema_025_4 + N_ema_050_4 +
+    chamber_uid,
+    data = dt)
+  summary(m)
+  return(m)
+}
+
+add_vwc_response <- function(dt, alpha1 = 4,
+    alpha2 = 6, save_plot = FALSE) {
+
+  dt[, f_n2o_rel := f_n2o/max(f_n2o), by = expt_id]
+  dt[, f_vwc := dbeta(VWC, shape1 = alpha1, shape2 = alpha2)]
+  dt[, f_vwc := f_vwc / max(f_vwc, na.rm = TRUE)]
+
+  p <- ggplot(drop_units(dt), aes(VWC, f_n2o_rel))
+  p <- p + geom_hline(yintercept = 0)
+  p <- p + geom_point(colour = "black")
+  p <- p + geom_line(aes(y = f_vwc), colour = "orange")
+  p <- p + facet_wrap(~ expt_id)
+
+  if (save_plot) {
+    fname <- here("output", "vwc_response.png")
+    ggsave(p, file = fname, type = "cairo")
+  }
+  return(dt)
 }

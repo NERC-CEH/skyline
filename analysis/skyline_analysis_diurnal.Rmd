@@ -1,5 +1,5 @@
 ---
-title: "Skyine Analysis- Biochar Experiment"
+title: "Skyine Analysis- Analysis of diurnal patterns"
 author: "Peter Levy"
 output:
   html_document:
@@ -54,4 +54,70 @@ tar_read(p_diurnal_by_day_by_expt_not_chamber, store = here("_targets_diurnal"))
 
 ```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Diurnal variation in CO2 flux, N2O flux, PPFD and air temperature, averaged separately for each experiment and for each chamber on each day. Separating by each experiment and day gives equal weight to both experiment and days with little variation, so shows relative variation rather than absolute variation."}
 tar_read(p_diurnal_by_day_by_expt_by_chamber, store = here("_targets_diurnal"))
+```
+
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Response of N2O flux to air temperature. Colours show data for each experiment, with a best-fit regression line for the pooled data set."}
+tar_read(p_TA_response, store = here("_targets_diurnal"))
+```
+
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Response of N2O flux to air temperature with logarithmic y-axis. Colours show data for each experiment, with a best-fit regression line for the pooled data set."}
+tar_read(p_TA_log_response, store = here("_targets_diurnal"))
+```
+
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Response of N2O flux to soil temperature. Colours show data for each experiment, with a best-fit regression line for the pooled data set."}
+tar_read(p_TS_response, store = here("_targets_diurnal"))
+```
+
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Response of N2O flux to soil temperature with logarithmic y-axis. Colours show data for each experiment, with a best-fit regression line for the pooled data set."}
+tar_read(p_TS_log_response, store = here("_targets_diurnal"))
+```
+
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Response of N2O flux to volumetric water content. N2O fluxes are normalised wrt the maximum flux for each experiment. Panels show data for each experiment, with a beta function estimated for the pooled data set."}
+tar_read(p_vwc_response, store = here("_targets_diurnal"))
+```
+
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Response of N2O flux to nitrogen addition, expressed as the exponential moving average of the nitrogen addition rate with a decay rate of 0.01."}
+tar_read(p_nema_010_response, store = here("_targets_diurnal"))
+```
+
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Response of N2O flux to nitrogen addition, expressed as the exponential moving average of the nitrogen addition rate with a decay rate of 0.025."}
+tar_read(p_nema_025_response, store = here("_targets_diurnal"))
+```
+
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Response of N2O flux to nitrogen addition, expressed as the exponential moving average of the nitrogen addition rate with a decay rate of 0.05."}
+tar_read(p_nema_050_response, store = here("_targets_diurnal"))
+```
+
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Response of N2O flux to nitrogen addition, expressed as the exponential moving average of the nitrogen addition rate with a decay rate of 0.01, lagged by 2 days."}
+tar_read(p_nema_0102_response, store = here("_targets_diurnal"))
+```
+
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Response of N2O flux to nitrogen addition, expressed as the exponential moving average of the nitrogen addition rate with a decay rate of 0.025, lagged by 2 days."}
+tar_read(p_nema_0252_response, store = here("_targets_diurnal"))
+```
+
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Response of N2O flux to nitrogen addition, expressed as the exponential moving average of the nitrogen addition rate with a decay rate of 0.05, lagged by 2 days."}
+tar_read(p_nema_0502_response, store = here("_targets_diurnal"))
+```
+
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Response of N2O flux to nitrogen addition, expressed as the exponential moving average of the nitrogen addition rate with a decay rate of 0.01, lagged by 4 days."}
+tar_read(p_nema_0104_response, store = here("_targets_diurnal"))
+```
+
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Response of N2O flux to nitrogen addition, expressed as the exponential moving average of the nitrogen addition rate with a decay rate of 0.025, lagged by 4 days."}
+tar_read(p_nema_0254_response, store = here("_targets_diurnal"))
+```
+
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Response of N2O flux to nitrogen addition, expressed as the exponential moving average of the nitrogen addition rate with a decay rate of 0.05, lagged by 4 days."}
+tar_read(p_nema_0504_response, store = here("_targets_diurnal"))
+```
+
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Response of N2O flux to nitrogen additionover time."}
+tar_read(p_nema_biochar1, store = here("_targets_diurnal"))
+
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Response of N2O flux to nitrogen additionover time."}
+tar_read(p_nema_digestate1, store = here("_targets_diurnal"))
+```
+```{r, eval = FALSE, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Response of N2O flux to temperature."}
+tar_read(p_flux_n2o_T, store = here("_targets_diurnal"))
 ```
