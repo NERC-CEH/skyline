@@ -8,9 +8,11 @@ library(targets)
 # tar_config_set(script = "_targets_shading1.R", store = "_targets_shading1", project = "shading1")
 # tar_config_set(script = "_targets_split1.R", store = "_targets_split1", project = "split1")
 # tar_config_set(script = "_targets_yield1.R", store = "_targets_yield1", project = "yield1")
-tar_config_set(script = "_targets_processing_only_mix1.R", store = "_targets_processing_only_mix1", project = "processing_only_mix1")
-tar_config_set(script = "_targets_processing_only_biochar1.R", store = "_targets_processing_only_biochar1", project = "processing_only_biochar1")
-tar_config_set(script = "_targets_processing_only_digestate1.R", store = "_targets_processing_only_digestate1", project = "processing_only_digestate1")
+# tar_config_set(script = "_targets_processing_only_mix1.R", store = "_targets_processing_only_mix1", project = "processing_only_mix1")
+# tar_config_set(script = "_targets_processing_only_biochar1.R", store = "_targets_processing_only_biochar1", project = "processing_only_biochar1")
+# tar_config_set(script = "_targets_processing_only_digestate1.R", store = "_targets_processing_only_digestate1", project = "processing_only_digestate1")
+tar_config_set(script = "_targets_processing_only_split1.R", store = "_targets_processing_only_split1", project = "processing_only_split1")
+
 
 source("_targets.R")
 
@@ -36,6 +38,8 @@ tar_make()
 Sys.setenv(TAR_PROJECT = "processing_only_biochar1")
 tar_make()
 Sys.setenv(TAR_PROJECT = "processing_only_digestate1")
+tar_make()
+Sys.setenv(TAR_PROJECT = "processing_only_split1")
 tar_make()
 
 tar_outdated()
