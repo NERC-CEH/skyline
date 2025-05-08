@@ -1147,34 +1147,37 @@ calc_flux_nl <- function(dt, gas_name = "co2", use_STP = TRUE, PA = 1000,
   form_ln <- formula(paste0("chi_", gas_name, " ~ t"))
   form_nl <- formula(paste0("chi_", gas_name, " ~ t + I(t^2)"))
 
-  # identify whether nonlinear fit is convex (t^2 term negative) or concave_up  (t^2 term positive)
+  # identify whether nonlinear fit using t^2 and t term
   dt[, dchi_dt_2 := coef(lm(form_nl, w = w, data = .SD))[3], by = mmnt_id]
-  dt[, concave_up := FALSE]  # do nonlinear fit by default
-  dt[dchi_dt_2 > 0, concave_up := TRUE]
+  dt[, dchi_dt := coef(lm(form_ln, w=w, data = .SD))[2], by = mmnt_id]
+  dt[, linear := FALSE]  # do nonlinear fit by default
+  dt[dchi_dt_2 > 0 & dchi_dt > 0, linear := TRUE] # do linear fit for positive fluxes when convex
+  dt[dchi_dt_2 < 0 & dchi_dt < 0, linear := TRUE] # do linear fit for negative fluxes when concave
+  dt[, dchi_dt := NULL]
 
-  # do nonlinear fit if not concave_up
+  # do nonlinear fit
   # we need the if block in case there are no cases, which gives an error
-  if (any(dt$concave_up == FALSE)) {
+  if (any(dt$linear == FALSE)) {
     form <- form_nl
-    dt[concave_up == FALSE, dchi_dt   := coef(lm(form, w = w, data = .SD))[2], by = mmnt_id]
-    dt[concave_up == FALSE, sigma_dchi_dt := summary(lm(form, w = w, data = .SD))$coefficients[2, 2], by = mmnt_id]
-    dt[concave_up == FALSE, (flux_var_name) := dchi_dt        * rho * volume_m3 / area_m2]
-    dt[concave_up == FALSE, (sigma_var_name) := sigma_dchi_dt * rho * volume_m3 / area_m2]
-    dt[concave_up == FALSE, (r2_var_name) := summary(lm(form, w = w, data = .SD))$r.squared, by = mmnt_id]
-    dt[concave_up == FALSE, (rmse_var_name) := summary(lm(form, w = w, data = .SD))$sigma, by = mmnt_id]
-    dt[concave_up == FALSE, (pred_var_name) := predict(lm(form, w = w, data = .SD)), by = mmnt_id]
+    dt[linear == FALSE, dchi_dt   := coef(lm(form, w = w, data = .SD))[2], by = mmnt_id]
+    dt[linear == FALSE, sigma_dchi_dt := summary(lm(form, w = w, data = .SD))$coefficients[2, 2], by = mmnt_id]
+    dt[linear == FALSE, (flux_var_name) := dchi_dt        * rho * volume_m3 / area_m2]
+    dt[linear == FALSE, (sigma_var_name) := sigma_dchi_dt * rho * volume_m3 / area_m2]
+    dt[linear == FALSE, (r2_var_name) := summary(lm(form, w = w, data = .SD))$r.squared, by = mmnt_id]
+    dt[linear == FALSE, (rmse_var_name) := summary(lm(form, w = w, data = .SD))$sigma, by = mmnt_id]
+    dt[linear == FALSE, (pred_var_name) := predict(lm(form, w = w, data = .SD)), by = mmnt_id]
   }
 
-  # do linear fit where concave_up
-  if (any(dt$concave_up == TRUE)) {
+  # do linear fit
+  if (any(dt$linear == TRUE)) {
     form <- form_ln
-    dt[concave_up == TRUE, dchi_dt   := coef(lm(form, w = w, data = .SD))[2], by = mmnt_id]
-    dt[concave_up == TRUE, sigma_dchi_dt := summary(lm(form, w = w, data = .SD))$coefficients[2, 2], by = mmnt_id]
-    dt[concave_up == TRUE, (flux_var_name) := dchi_dt        * rho * volume_m3 / area_m2]
-    dt[concave_up == TRUE, (sigma_var_name) := sigma_dchi_dt * rho * volume_m3 / area_m2]
-    dt[concave_up == TRUE, (r2_var_name) := summary(lm(form, w = w, data = .SD))$r.squared, by = mmnt_id]
-    dt[concave_up == TRUE, (rmse_var_name) := summary(lm(form, w = w, data = .SD))$sigma, by = mmnt_id]
-    dt[concave_up == TRUE, (pred_var_name) := predict(lm(form, w = w, data = .SD)), by = mmnt_id]
+    dt[linear == TRUE, dchi_dt   := coef(lm(form, w = w, data = .SD))[2], by = mmnt_id]
+    dt[linear == TRUE, sigma_dchi_dt := summary(lm(form, w = w, data = .SD))$coefficients[2, 2], by = mmnt_id]
+    dt[linear == TRUE, (flux_var_name) := dchi_dt        * rho * volume_m3 / area_m2]
+    dt[linear == TRUE, (sigma_var_name) := sigma_dchi_dt * rho * volume_m3 / area_m2]
+    dt[linear == TRUE, (r2_var_name) := summary(lm(form, w = w, data = .SD))$r.squared, by = mmnt_id]
+    dt[linear == TRUE, (rmse_var_name) := summary(lm(form, w = w, data = .SD))$sigma, by = mmnt_id]
+    dt[linear == TRUE, (pred_var_name) := predict(lm(form, w = w, data = .SD)), by = mmnt_id]
   }
 
   # remove un-needed variables
