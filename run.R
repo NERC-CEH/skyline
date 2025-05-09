@@ -9,6 +9,10 @@ library(targets)
 # tar_config_set(script = "_targets_split1.R", store = "_targets_split1", project = "split1")
 # tar_config_set(script = "_targets_yield1.R", store = "_targets_yield1", project = "yield1")
 # tar_config_set(script = "_targets_diurnal.R", store = "_targets_diurnal", project = "diurnal")
+# tar_config_set(script = "_targets_processing_only_mix1.R", store = "_targets_processing_only_mix1", project = "processing_only_mix1")
+# tar_config_set(script = "_targets_processing_only_biochar1.R", store = "_targets_processing_only_biochar1", project = "processing_only_biochar1")
+# tar_config_set(script = "_targets_processing_only_digestate1.R", store = "_targets_processing_only_digestate1", project = "processing_only_digestate1")
+# tar_config_set(script = "_targets_processing_only_split1.R", store = "_targets_processing_only_split1", project = "processing_only_split1")
 
 source("_targets.R")
 
@@ -29,9 +33,17 @@ Sys.setenv(TAR_PROJECT = "split1")
 tar_make()
 Sys.setenv(TAR_PROJECT = "yield1")
 tar_make()
-
 Sys.setenv(TAR_PROJECT = "diurnal")
 tar_make()
+Sys.setenv(TAR_PROJECT = "processing_only_mix1")
+tar_make()
+Sys.setenv(TAR_PROJECT = "processing_only_biochar1")
+tar_make()
+Sys.setenv(TAR_PROJECT = "processing_only_digestate1")
+tar_make()
+Sys.setenv(TAR_PROJECT = "processing_only_split1")
+tar_make()
+
 
 tar_outdated()
 # running in parallel seems to cause some problems for individual experiment projects
