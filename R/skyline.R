@@ -304,7 +304,7 @@ get_data <- function(v_dates = NULL, this_site_id = "HRG",
   fs::dir_create(pname_csv_unfilt)
   fs::dir_create(pname_png_unfilt)
   fs::dir_create(pname_png_unfilt_daily)
-  if(diagnostic_plots){ # default to FALSE but really helpful for detecting problems with system
+  if (diagnostic_plots) { # default to FALSE but really helpful for detecting problems with system
     pname_diagnostic_plots <- here("output", this_site_id, this_expt_id, "png", "diagnostic plots")
     fs::dir_create(pname_diagnostic_plots)}
 
@@ -345,7 +345,7 @@ get_data <- function(v_dates = NULL, this_site_id = "HRG",
     dt[, chamber_id := as.factor(chamber_id)]
     dt <- dt_met[dt, on = .(chamber_id = chamber_id, datect = datect), roll = TRUE] # rolling join of dt_met with dt based on chamber id column
 
-    if(diagnostic_plots){skyline_diagnostic_plot(dt, this_date, pname_diagnostic_plots)}
+    if (diagnostic_plots) {skyline_diagnostic_plot(dt, this_date, pname_diagnostic_plots)}
 
     # shift chamber id down to fix lag
     dt <- dt[,chamber_id:=shift(chamber_id, dt_band$t_shift, type = "lag")]
@@ -542,7 +542,7 @@ identify_deadband <- function(dt, initial_deadband_width = 150, final_deadband_w
   dt[, start_final_deadband := max(t) - final_deadband_width, by = mmnt_id]
 
   # if removing the deadband, subset the data to only those with exclude = FALSE
-  if (remove_deadband) dt <- dt[exclude == FALSE] # should this just be removed as using weighting for calculating fluxes??
+  if (remove_deadband) dt <- dt[exclude == FALSE]
   return(dt)
 }
 
@@ -553,8 +553,6 @@ plot_data_unfiltered <- function(dt_unfilt, gas_name = "chi_co2",
   if (seq_id_to_plot %!in% dt_unfilt$seq_id) seq_id_to_plot <-
     unique(dt_unfilt$seq_id)[1]
   dt1 <- dt_unfilt[seq_id_to_plot == seq_id]
-  # dt_sfdband <- dt1[, .(start_final_deadband = .SD[1, start_final_deadband]),
-  #   by = mmnt_id]
 
   p <- ggplot(dt1, aes(t, get(gas_name), colour = exclude))
   p <- p + geom_point(aes(size = t_resid))

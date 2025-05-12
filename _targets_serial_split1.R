@@ -30,7 +30,7 @@ data.table::getDTthreads()
 #### SPECIFY ####
 # site, experiment, and dates to process:
 site_id <- "EHD"
-expt_id <- "biochar1"
+expt_id <- "split1"
 
 
 # default to process all dates in experiment
@@ -91,60 +91,5 @@ method <-  "time fit"  # "time fit" or "specified deadband only"
     tar_target(
       name = dt_flux,
       command = filter_fluxes2(dt, save_file = TRUE, fname = "dt_flux", rmse_threshold = 5)
-    # ),
-
-  ## post-processing plots
-
-  # tar_target(
-  # name = p_flux_co2,
-  # command = plot_flux(dt_flux, flux_name = "f_co2",
-  # sigma_name = "sigma_f_co2", site_id, expt_id,
-  # mult = 1, y_min = -25, y_max = 25)
-  # ),
-  # tar_target(
-  # name = p_flux_ch4,
-  # command = plot_flux(dt_flux, flux_name = "f_ch4",
-  # sigma_name = "sigma_f_ch4", site_id, expt_id,
-  # mult = 1000, y_min = -5, y_max = 5)
-  # ),
-  # tar_target(
-  # name = p_flux_n2o,
-  # command = plot_flux(dt_flux, flux_name = "f_n2o",
-  # sigma_name = "sigma_f_n2o", site_id, expt_id,
-  # mult = 1000, y_min = -2, y_max = 10)
-  # ),
-  # tar_target(
-  # name = p_flux_n2o_T,
-  # command = plot_flux_vs_xvar(dt_flux, flux_name = "f_n2o",
-  #                             sigma_name = "sigma_f_n2o", xvar_name = "TSoil",
-  #                             colour_name = "chamber_id", facet_name = "trmt_id",
-  #                             colour_is_factor = TRUE, rows_only = TRUE,
-  #                             mult = 1000)
-  # ),
-  # tar_target(
-  # name = p_flux_n2o_with_Nappl,
-  # command = plot_n2o_flux(dt_flux, flux_name = "f_n2o",
-  # sigma_name = "sigma_f_n2o",
-  # l_meta, mult = 1000, y_min = -2, y_max = 10)
-  # ),
-  # tar_target(
-  # name = p_flux_n2o_diurnal,
-  # command = plot_n2o_flux_diurnal(dt_flux, flux_name = "f_n2o",
-  # sigma_name = "sigma_f_n2o", this_site_id = site_id, this_expt_id = expt_id,
-  # mult = 1000, y_min = -2, y_max = 2.5)
-  # ),
-  # tar_target(
-  #   name = p_bar_n2o,
-  #   command = bar_means_by_trmt(dt_flux, flux_name = "f_n2o", mult = 1000)
-  # ),
-  #
-  # # nonlinearity filter plots
-  # tar_target(
-  #   name = dt_p_nonlinearity,
-  #   command = plot_chi_co2_with_rmse(dt, n = 50, save_plot = TRUE)
-  # # ),
-
-  # # manuscript file:
-  # tar_render(manuscript_pdf, here("manuscripts", site_id, expt_id, "skyline_analysis.Rmd")
 ))
 
