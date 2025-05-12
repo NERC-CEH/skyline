@@ -287,7 +287,7 @@ get_soilmet_data <- function(v_fnames, o2_data = TRUE) {
 
 get_data <- function(v_dates = NULL, this_site_id = "HRG",
                      this_expt_id = "diurnal1", l_meta,
-                     seq_id_to_plot = 1,
+                     seq_id_to_plot = 1, diagnostic_plots = FALSE,
                      method = "time fit", dryrun = FALSE,
                      save_plots = FALSE, write_all = FALSE, n_min = 300) {
   # create directories for output
@@ -304,6 +304,9 @@ get_data <- function(v_dates = NULL, this_site_id = "HRG",
   fs::dir_create(pname_csv_unfilt)
   fs::dir_create(pname_png_unfilt)
   fs::dir_create(pname_png_unfilt_daily)
+  if (diagnostic_plots) { # default to FALSE but really helpful for detecting problems with system
+    pname_diagnostic_plots <- here("output", this_site_id, this_expt_id, "png", "diagnostic plots")
+    fs::dir_create(pname_diagnostic_plots)}
 
   # subset metadata to site and experiment
   dt_expt <- l_meta$dt_expt[this_site_id == site_id & this_expt_id == expt_id][1]
@@ -341,6 +344,8 @@ get_data <- function(v_dates = NULL, this_site_id = "HRG",
 
     dt[, chamber_id := as.factor(chamber_id)]
     dt <- dt_met[dt, on = .(chamber_id = chamber_id, datect = datect), roll = TRUE] # rolling join of dt_met with dt based on chamber id column
+
+    if (diagnostic_plots) {skyline_diagnostic_plot(dt, this_date, pname_diagnostic_plots)}
 
     # shift chamber id down to fix lag
     dt <- dt[,chamber_id:=shift(chamber_id, dt_band$t_shift, type = "lag")]
@@ -418,36 +423,40 @@ get_data <- function(v_dates = NULL, this_site_id = "HRG",
       l_dt_chi[[i]] <- dt
     }
 
-
-    if (save_plots) {
-      if (dryrun){
-        p <- plot_chi(dt, gas_name = "co2")
-        fname <- paste0(pname_png_unfilt_daily, "/co2_", lubridate::date(this_date), ".png")
-        ggsave(p, file = fname, type = "cairo")
-        p <- plot_chi(dt, gas_name = "ch4")
-        fname <- paste0(pname_png_unfilt_daily, "/ch4_", lubridate::date(this_date), ".png")
-        ggsave(p, file = fname, type = "cairo")
-        p <- plot_chi(dt, gas_name = "n2o")
-        fname <- paste0(pname_png_unfilt_daily, "/n2o_", lubridate::date(this_date), ".png")
-        ggsave(p, file = fname, type = "cairo")
-      } else {
-          p <- plot_chi(dt, gas_name = "co2")
-          fname <- paste0(pname_png_daily, "/co2_", lubridate::date(this_date), ".png")
-          ggsave(p, file = fname, type = "cairo")
-          p <- plot_chi(dt, gas_name = "ch4")
-          fname <- paste0(pname_png_daily, "/ch4_", lubridate::date(this_date), ".png")
-          ggsave(p, file = fname, type = "cairo")
-          p <- plot_chi(dt, gas_name = "n2o")
-          fname <- paste0(pname_png_daily, "/n2o_", lubridate::date(this_date), ".png")
-          ggsave(p, file = fname, type = "cairo")
-        }
-      }
-
     if (!dryrun) {
       fname <- paste0(pname_csv, "/dt_chi_", lubridate::date(this_date), ".csv")
       fwrite(dt, file = fname)
+      if (save_plots){ # for EA to double check deadbands otherwise defaults to FALSE
+        p <- plot_data_unfiltered(dt, gas_name = "chi_co2",
+              initial_deadband_width = dt_band$initial_deadband_width,
+              final_deadband_width   = dt_band$final_deadband_width, seq_id_to_plot = seq_id_to_plot)}
       l_dt_chi[[i]] <- dt
     }
+
+    if (!dryrun & save_plots) {
+      # plots with deadbands included
+      p <- plot_chi(dt, gas_name = "co2", rm_db = F)
+      fname <- paste0(pname_png_unfilt_daily, "/co2_", lubridate::date(this_date), ".png")
+      ggsave(p, file = fname, type = "cairo")
+      # p <- plot_chi(dt, gas_name = "ch4", rm_db = F)
+      # fname <- paste0(pname_png_unfilt_daily, "/ch4_", lubridate::date(this_date), ".png")
+      # ggsave(p, file = fname, type = "cairo")
+      p <- plot_chi(dt, gas_name = "n2o", rm_db = F)
+      fname <- paste0(pname_png_unfilt_daily, "/n2o_", lubridate::date(this_date), ".png")
+      ggsave(p, file = fname, type = "cairo")
+
+      # plots with deadbands removed
+      p <- plot_chi(dt, gas_name = "co2", rm_db = T)
+      fname <- paste0(pname_png_daily, "/co2_", lubridate::date(this_date), ".png")
+      ggsave(p, file = fname, type = "cairo")
+      # p <- plot_chi(dt, gas_name = "ch4", rm_db = T)
+      # fname <- paste0(pname_png_daily, "/ch4_", lubridate::date(this_date), ".png")
+      # ggsave(p, file = fname, type = "cairo")
+      p <- plot_chi(dt, gas_name = "n2o", rm_db = T)
+      fname <- paste0(pname_png_daily, "/n2o_", lubridate::date(this_date), ".png")
+      ggsave(p, file = fname, type = "cairo")
+    }
+
   }
   dt_chi  <- rbindlist(l_dt_chi, fill=TRUE)
   # remove days during experiment when no flux measurements
@@ -529,6 +538,8 @@ identify_deadband <- function(dt, initial_deadband_width = 150, final_deadband_w
   dt[, t := t - start_t]
   # remove un-needed variables
   dt[, start_t := NULL]
+  # recalculate final deadband after t shift for plotting purposes
+  dt[, start_final_deadband := max(t) - final_deadband_width, by = mmnt_id]
 
   # if removing the deadband, subset the data to only those with exclude = FALSE
   if (remove_deadband) dt <- dt[exclude == FALSE]
@@ -542,15 +553,13 @@ plot_data_unfiltered <- function(dt_unfilt, gas_name = "chi_co2",
   if (seq_id_to_plot %!in% dt_unfilt$seq_id) seq_id_to_plot <-
     unique(dt_unfilt$seq_id)[1]
   dt1 <- dt_unfilt[seq_id_to_plot == seq_id]
-  dt_sfdband <- dt1[, .(start_final_deadband = .SD[1, start_final_deadband]),
-    by = mmnt_id]
 
   p <- ggplot(dt1, aes(t, get(gas_name), colour = exclude))
   p <- p + geom_point(aes(size = t_resid))
   p <- p + geom_point()
-  p <- p + facet_wrap(~ mmnt_id) + xlim(0, NA)
-  p <- p + geom_vline(xintercept = initial_deadband_width)
-  p <- p + geom_vline(data = dt_sfdband, aes(xintercept = start_final_deadband))
+  # p <- p + facet_wrap(~ mmnt_id) + xlim(0, NA) shifted t so mmnt starts at -t values and initial deadband is at t=0
+  p <- p + geom_vline(xintercept = 0) + geom_vline(data = dt1, aes(xintercept = start_final_deadband))
+  # p <- p + geom_vline(data = dt_sfdband, aes(xintercept = start_final_deadband))
 
   fname <- here("output", dt1$site_id[1], dt1$expt_id[1], "png", "unfilt",
     paste0(gas_name, "_", as.character(lubridate::date(dt1$datect[1])),
@@ -559,12 +568,13 @@ plot_data_unfiltered <- function(dt_unfilt, gas_name = "chi_co2",
   return(p)
 }
 
-plot_chi <- function(dt, gas_name = "n2o") {
-  p <- ggplot(dt, aes(t, get(paste0("chi_", gas_name)), colour = as.factor(exclude), group = mmnt_id))
+plot_chi <- function(dt, gas_name = "n2o", rm_db = F) {
+  if (rm_db == TRUE){dt <- dt[w != 0,]} # removes deadbands for plotting if chosen
+  p <- ggplot(dt, aes(t, get(paste0("chi_", gas_name)), colour = as.factor(seq_id), group = mmnt_id)) # colour as seq_id allows us to identify if fluxes were day or night and therefore identify any problems
   # p <- p + geom_point(alpha = 0.1) ## WIP setting alpha adds computation time - try without
   p <- p + geom_point() ## WIP setting alpha adds computation time - try without
-  p <- p + ylab(gas_name)
-  p <- p + facet_wrap(~ seq_id)
+  p <- p + ylab(gas_name) + scale_x_continuous(breaks = seq(0, max(dt$t), 100))
+  p <- p + facet_wrap(~ chamber_id) # plotting by chamber allows us to see if any chambers are particularly problematic
   if (paste0("chi_pred_", gas_name) %in% colnames(dt)) {
     p <- p + geom_line(aes(y = get(paste0("chi_pred_", gas_name))), colour = "red")
   }
@@ -929,6 +939,21 @@ filter_fluxes <- function(dt, save_file = FALSE, fname = "dt_flux") {
   dt <- dt[rmse_f_n2o < 0.021]
   if (save_file) fwrite(dt, file = here("output", paste0(fname, ".csv")))
   if (save_file)  qsave(dt, file = here("output", paste0(fname, ".qs")))
+  return(dt)
+}
+
+filter_fluxes2 <- function(dt, save_file = FALSE, fname = "dt_flux", rmse_threshold = 3) { # second option for filtering fluxes for EA without altering code by PL
+  # remove days during experiment when no flux measurements
+  dt <- dt[!is.na(site_id)]
+
+  # # crude filtering of extreme outliers; units of umol/m2/s
+  # # add thresholds as arguments
+  dt <- dt[rmse_f_co2 < rmse_threshold]
+  # dt <- dt[f_co2 > -50 & f_co2 < 50]
+  # dt <- dt[f_n2o > -0.1 & f_n2o < 0.1]
+  # dt <- dt[rmse_f_n2o < 0.021]
+  if (save_file) fwrite(dt, file = here("output", dt[1, .(site_id, expt_id)], paste0(fname, ".csv")))
+  # if (save_file)  qsave(dt, file = here("output", paste0(fname, ".qs")))
   return(dt)
 }
 
@@ -1544,4 +1569,30 @@ add_vwc_response <- function(dt, alpha1 = 4,
     ggsave(p, file = fname, type = "cairo")
   }
   return(dt)
+}
+
+skyline_diagnostic_plot <- function(dt, this_date, pname_diagnostic_plots){ # useful for EA but default to FALSE unless specified
+  dt_subset <- dt %>% filter(row_number() %% 15 == 1)
+
+  a <- ggplot(dt_subset, aes(datect, chamber_id)) + geom_point() +
+    ggtitle("Chamber Position") + scale_x_datetime(date_breaks = "6 hours", date_labels = "%H:%M")
+  b <- ggplot(dt_subset, aes(datect, PPFD_IN_ch)) + geom_point() +
+    ggtitle("Chamber PAR") + scale_x_datetime(date_breaks = "6 hours", date_labels = "%H:%M")
+  c <- ggplot(dt_subset, aes(datect, TA)) + geom_point() +
+    ggtitle("Chamber Temperature") + scale_x_datetime(date_breaks = "6 hours", date_labels = "%H:%M")
+  d <- ggplot(dt_subset, aes(datect, chi_co2)) + geom_point() +
+    ggtitle("CO2") + scale_x_datetime(date_breaks = "6 hours", date_labels = "%H:%M")
+  e <- ggplot(dt_subset, aes(datect, chi_n2o)) + geom_point() +
+    ggtitle("N2O") + scale_x_datetime(date_breaks = "6 hours", date_labels = "%H:%M")
+  f <- ggplot(dt_subset, aes(datect, chi_h2o)) + geom_point() +
+    ggtitle("H2O") + scale_x_datetime(date_breaks = "6 hours", date_labels = "%H:%M")
+  g <- ggplot(dt_subset, aes(datect, P_cavity)) + geom_point() +
+    ggtitle("CavityPressure") + scale_x_datetime(date_breaks = "6 hours", date_labels = "%H:%M")
+  h <- ggplot(dt_subset, aes(datect, T_cavity)) + geom_point() +
+    ggtitle("CavityTemp") + scale_x_datetime(date_breaks = "6 hours", date_labels = "%H:%M")
+
+  plot <- ggpubr::ggarrange(a,b,c,d,e,f,g,h)
+  plot
+  ggsave(paste(pname_diagnostic_plots, "/", lubridate::date(this_date), ".jpg", sep = ""), width = 30, height = 20, units = "cm")
+
 }

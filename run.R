@@ -1,6 +1,6 @@
 here::i_am("./run.R")
 library(targets)
-# tar_config_set(script = "_targets.R", store = "_targets", project = "main")
+# tar_config_set(script = "_targets_parallel_all.R", store = "_targets", project = "main")
 # tar_config_set(script = "_targets_biochar1.R", store = "_targets_biochar1", project = "biochar1")
 # tar_config_set(script = "_targets_digestate1.R", store = "_targets_digestate1", project = "digestate1")
 # tar_config_set(script = "_targets_divine1.R", store = "_targets_divine1", project = "divine1")
@@ -9,6 +9,10 @@ library(targets)
 # tar_config_set(script = "_targets_split1.R", store = "_targets_split1", project = "split1")
 # tar_config_set(script = "_targets_yield1.R", store = "_targets_yield1", project = "yield1")
 # tar_config_set(script = "_targets_diurnal.R", store = "_targets_diurnal", project = "diurnal")
+# tar_config_set(script = "_targets_serial_mix1.R", store = "_targets_serial_mix1", project = "serial_mix1")
+# tar_config_set(script = "_targets_serial_biochar1.R", store = "_targets_serial_biochar1", project = "serial_biochar1")
+# tar_config_set(script = "_targets_serial_digestate1.R", store = "_targets_serial_digestate1", project = "serial_digestate1")
+# tar_config_set(script = "_targets_serial_split1.R", store = "_targets_serial_split1", project = "serial_split1")
 
 source("_targets.R")
 
@@ -29,9 +33,17 @@ Sys.setenv(TAR_PROJECT = "split1")
 tar_make()
 Sys.setenv(TAR_PROJECT = "yield1")
 tar_make()
-
 Sys.setenv(TAR_PROJECT = "diurnal")
 tar_make()
+Sys.setenv(TAR_PROJECT = "serial_mix1")
+tar_make()
+Sys.setenv(TAR_PROJECT = "serial_biochar1")
+tar_make()
+Sys.setenv(TAR_PROJECT = "serial_digestate1")
+tar_make()
+Sys.setenv(TAR_PROJECT = "serial_split1")
+tar_make()
+
 
 tar_outdated()
 # running in parallel seems to cause some problems for individual experiment projects
