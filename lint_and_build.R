@@ -15,8 +15,11 @@ library(diffr)
 library(sinew)
 library(attachment)
 
-desc_file <- attachment::att_amend_desc(path = ".", inside_rmd = TRUE, 
-  update.config = TRUE)
+desc_file <- attachment::att_amend_desc(
+  path = ".",
+  inside_rmd = TRUE,
+  update.config = TRUE
+)
 # att_from_rmds(path = file.path(here::here("vignettes/use_powerFlux.Rmd")))
 
 pkgload::load_all(".")
@@ -53,7 +56,11 @@ devtools::document()
 # name of file to style
 fname <- "./R/skyline.R"
 # make a back-up copy
-fname_backup <- paste0(tools::file_path_sans_ext(fname),  ".backup_", tools::file_ext(fname))
+fname_backup <- paste0(
+  tools::file_path_sans_ext(fname),
+  ".backup_",
+  tools::file_ext(fname)
+)
 file.copy(fname, fname_backup, overwrite = TRUE)
 
 # style the file - it gets re-written
@@ -66,15 +73,14 @@ lint(fname)
 
 # best to have a .lintr file in the project root with:
 # linters: linters_with_defaults(
-    # line_length_linter(80), 
-    # object_name_linter = NULL,
-    # object_usage_linter = NULL
-  # )
+# line_length_linter(80),
+# object_name_linter = NULL,
+# object_usage_linter = NULL
+# )
 # exclusions: list(
-    # "data-raw/Basic_Figures.R"
-  # )
+# "data-raw/Basic_Figures.R"
+# )
 # encoding: "UTF-8"
-
 
 makeOxyFile(fname)
 
@@ -95,7 +101,7 @@ sinew::makeOxygen(skyline::plot_n2o_flux)
 sinew::makeOxygen(skyline::plot_n2o_flux_diurnal)
 sinew::makeOxygen(skyline::plot_flux_vs_xvar)
 
-# to create/overwrite .lintr and edit 
+# to create/overwrite .lintr and edit
 # use_lintr() # if you want to change defaults
 
 getwd()
@@ -105,7 +111,7 @@ setwd("..")
 system.time(check(manual = FALSE, vignettes = TRUE))
 
 #create("skyline") # if it doesn't already exist
-# Add functions in files to R/ directory 
+# Add functions in files to R/ directory
 
 #devtools::use_data(projlonlat, projOSGB, projUTM, overwrite = TRUE)
 #devtools::use_data(ch4BySector, co2BySector, n2oBySector, internal = TRUE)
@@ -122,7 +128,12 @@ build_vignettes()
 #Sys.setenv(RD2PDF_INPUTENC = "inputenx ")
 pack <- "skyline"
 path <- find.package(pack)
-system(paste(shQuote(file.path(R.home("bin"), "R")),"CMD", "Rd2pdf", shQuote(path)))
+system(paste(
+  shQuote(file.path(R.home("bin"), "R")),
+  "CMD",
+  "Rd2pdf",
+  shQuote(path)
+))
 
 system.time(build(manual = TRUE, vignettes = FALSE))
 system.time(check(vignettes = FALSE))
@@ -141,6 +152,6 @@ library(skyline)
 ?get_ci_omega
 browseVignettes("skyline")
 
-detach("package:skyline", unload=TRUE)
+detach("package:skyline", unload = TRUE)
 .libPaths()
 remove.packages("skyline")

@@ -8,3 +8,6 @@
 ^data-raw$
 ^output$
 ^\.lintr$
+^[\.]?air\.toml$
+^\.vscode$
+^\.github$

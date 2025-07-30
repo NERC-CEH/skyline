@@ -8,9 +8,24 @@ Sys.setenv(TZ = "GMT")
 set.seed(448)
 
 # Set target options:
-v_pkgs = c("here", "fs", "data.table", "readxl", "units", "qs", "ggplot2",
-  "lubridate", "dplyr", "future", "viridis", "lme4", "ggeffects",
-  "photobiology", "mgcv", "ggpmisc")
+v_pkgs = c(
+  "here",
+  "fs",
+  "data.table",
+  "readxl",
+  "units",
+  "qs",
+  "ggplot2",
+  "lubridate",
+  "dplyr",
+  "future",
+  "viridis",
+  "lme4",
+  "ggeffects",
+  "photobiology",
+  "mgcv",
+  "ggpmisc"
+)
 tar_option_set(
   packages = v_pkgs,
   format = "qs"
@@ -30,7 +45,10 @@ list(
   tar_target(fname_dt_flux, "_targets/objects/dt_flux", format = "file"),
   tar_target(dt_flux_in, qread(fname_dt_flux)),
   # choose biological sign convention for CO2 fluxes
-  tar_target(dt_flux_bio, switch_sign_co2(dt_flux_in, convention_in = "meterological")),
+  tar_target(
+    dt_flux_bio,
+    switch_sign_co2(dt_flux_in, convention_in = "meterological")
+  ),
   # filter out bad data
   # tar_target(dt_flux, filter_fluxes(dt_flux_bio)),
   tar_target(dt_flux, filter_env_vars(dt_flux_bio)),
@@ -55,22 +73,42 @@ list(
   #                             mult = 1000)
   # ),
 
-    # plot diurnals
+  # plot diurnals
   tar_target(
     name = p_diurnal_lumped,
-    command = plot_diurnal(dt_flux, split_by_day = FALSE, split_by_expt = FALSE, split_by_chamber = FALSE)
+    command = plot_diurnal(
+      dt_flux,
+      split_by_day = FALSE,
+      split_by_expt = FALSE,
+      split_by_chamber = FALSE
+    )
   ),
   tar_target(
     name = p_diurnal_by_expt,
-    command = plot_diurnal(dt_flux, split_by_day = FALSE, split_by_expt = TRUE, split_by_chamber = FALSE)
+    command = plot_diurnal(
+      dt_flux,
+      split_by_day = FALSE,
+      split_by_expt = TRUE,
+      split_by_chamber = FALSE
+    )
   ),
   tar_target(
     name = p_diurnal_by_day,
-    command = plot_diurnal(dt_flux, split_by_day = TRUE,  split_by_expt = FALSE, split_by_chamber = FALSE)
+    command = plot_diurnal(
+      dt_flux,
+      split_by_day = TRUE,
+      split_by_expt = FALSE,
+      split_by_chamber = FALSE
+    )
   ),
   tar_target(
     name = p_diurnal_by_day_by_expt_not_chamber,
-    command = plot_diurnal(dt_flux, split_by_day = TRUE,  split_by_expt = TRUE, split_by_chamber = FALSE)
+    command = plot_diurnal(
+      dt_flux,
+      split_by_day = TRUE,
+      split_by_expt = TRUE,
+      split_by_chamber = FALSE
+    )
   ),
   tar_target(
     name = p_vwc_response,
@@ -148,29 +186,39 @@ list(
 
   tar_target(
     name = p_nema_biochar1,
-    command = plot_nema_vs_time(dt,
+    command = plot_nema_vs_time(
+      dt,
       this_site_id = "EHD",
-      this_expt_id = "biochar1", l_meta = l_meta)
+      this_expt_id = "biochar1",
+      l_meta = l_meta
+    )
   ),
 
   tar_target(
     name = p_nema_digestate1,
-    command = plot_nema_vs_time(dt,
+    command = plot_nema_vs_time(
+      dt,
       this_site_id = "EHD",
-      this_expt_id = "digestate1", l_meta = l_meta)
+      this_expt_id = "digestate1",
+      l_meta = l_meta
+    )
   ),
 
   # this takes ages - needs checking
-    tar_target(
-  name = p_flux_n2o_T,
-    command = plot_flux_vs_xvar(dt_flux, flux_name = "f_n2o",
-                              sigma_name = "sigma_f_n2o", xvar_name = "TSoil",
-                              colour_name = "chamber_id", facet_name = "trmt_id",
-                              colour_is_factor = TRUE, rows_only = FALSE,
-                              mult = 1000)
+  tar_target(
+    name = p_flux_n2o_T,
+    command = plot_flux_vs_xvar(
+      dt_flux,
+      flux_name = "f_n2o",
+      sigma_name = "sigma_f_n2o",
+      xvar_name = "TSoil",
+      colour_name = "chamber_id",
+      facet_name = "trmt_id",
+      colour_is_factor = TRUE,
+      rows_only = FALSE,
+      mult = 1000
+    )
   ),
-
-
 
   # report file:
   tar_render(report_html, here("analysis", "skyline_analysis_diurnal.Rmd"))
