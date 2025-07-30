@@ -8,9 +8,24 @@ Sys.setenv(TZ = "GMT")
 set.seed(448)
 
 # Set target options:
-v_pkgs = c("here", "fs", "data.table", "readxl", "units", "qs", "ggplot2",
-  "lubridate", "dplyr", "future", "viridis", "lme4", "ggeffects",
-  "photobiology", "mgcv", "ggpmisc")
+v_pkgs = c(
+  "here",
+  "fs",
+  "data.table",
+  "readxl",
+  "units",
+  "qs",
+  "ggplot2",
+  "lubridate",
+  "dplyr",
+  "future",
+  "viridis",
+  "lme4",
+  "ggeffects",
+  "photobiology",
+  "mgcv",
+  "ggpmisc"
+)
 tar_option_set(
   packages = v_pkgs,
   format = "qs"
@@ -34,11 +49,17 @@ list(
 
   tar_target(
     name = p_flux_n2o,
-    command = plot_flux_vs_xvar(dt_flux, flux_name = "f_n2o",
-                              sigma_name = "sigma_f_n2o", xvar_name = "datect",
-                              colour_name = "chamber_id", facet_name = "trmt_id",
-                              colour_is_factor = TRUE, rows_only = TRUE,
-                              mult = 1000)
+    command = plot_flux_vs_xvar(
+      dt_flux,
+      flux_name = "f_n2o",
+      sigma_name = "sigma_f_n2o",
+      xvar_name = "datect",
+      colour_name = "chamber_id",
+      facet_name = "trmt_id",
+      colour_is_factor = TRUE,
+      rows_only = TRUE,
+      mult = 1000
+    )
   ),
   # # this takes ages - needs checking
   #   tar_target(
@@ -51,28 +72,46 @@ list(
   # ),
   tar_target(
     name = p_flux_n2o_with_Nappl,
-    command = plot_n2o_flux(dt_flux, flux_name = "f_n2o",
-      sigma_name = "sigma_f_n2o", this_site_id = "SHP", this_expt_id = "divine1",
-      l_meta, mult = 1000)
+    command = plot_n2o_flux(
+      dt_flux,
+      flux_name = "f_n2o",
+      sigma_name = "sigma_f_n2o",
+      this_site_id = "SHP",
+      this_expt_id = "divine1",
+      l_meta,
+      mult = 1000
+    )
   ),
   tar_target(
     name = p_flux_n2o_diurnal,
-    command = plot_n2o_flux_diurnal(dt_flux, flux_name = "f_n2o",
-      sigma_name = "sigma_f_n2o", this_site_id = "SHP", this_expt_id = "divine1",
-      mult = 1000, y_min = -2, y_max = 2.5)
+    command = plot_n2o_flux_diurnal(
+      dt_flux,
+      flux_name = "f_n2o",
+      sigma_name = "sigma_f_n2o",
+      this_site_id = "SHP",
+      this_expt_id = "divine1",
+      mult = 1000,
+      y_min = -2,
+      y_max = 2.5
+    )
   ),
   tar_target(
     name = p_bar_n2o,
-    command = bar_means_by_trmt(dt_flux,
-      flux_name = "f_n2o", mult = 1000)
+    command = bar_means_by_trmt(dt_flux, flux_name = "f_n2o", mult = 1000)
   ),
   # check basic environmental variables
   tar_target(
     name = p_T,
-    command = plot_flux_vs_xvar(dt_flux, flux_name = "TA",
-                              sigma_name = "f_n2o", xvar_name = "datect",
-                              colour_name = "f_n2o", facet_name = "chamber_id",
-                              colour_is_factor = FALSE, rows_only = FALSE)
+    command = plot_flux_vs_xvar(
+      dt_flux,
+      flux_name = "TA",
+      sigma_name = "f_n2o",
+      xvar_name = "datect",
+      colour_name = "f_n2o",
+      facet_name = "chamber_id",
+      colour_is_factor = FALSE,
+      rows_only = FALSE
+    )
   ),
 
   # report file:

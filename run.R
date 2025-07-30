@@ -66,7 +66,7 @@ system.time(tar_make(starts_with("manuscript_")))
 system.time(tar_make())
 tar_load(starts_with("p_"))
 p_unfilt
-ggsave(p_unfilt,  file = "output/HRG/diurnal1/p_unfilt__2023-06-01.png")
+ggsave(p_unfilt, file = "output/HRG/diurnal1/p_unfilt__2023-06-01.png")
 ggsave(p_chi_co2, file = "output/HRG/diurnal1/p_chi_co2_2023-06-01.png")
 ggsave(p_chi_ch4, file = "output/HRG/diurnal1/p_chi_ch4_2023-06-01.png")
 ggsave(p_chi_n2o, file = "output/HRG/diurnal1/p_chi_n2o_2023-06-01.png")
@@ -91,10 +91,12 @@ dim(dt)
 tar_manifest(fields = "command") # list the targets
 # visualise the network of targets / pipeline workflow
 g <- tar_glimpse()
-g$height <- 1000; g$width <- "100%"
+g$height <- 1000
+g$width <- "100%"
 g
 v <- tar_visnetwork(targets_only = TRUE)
-v$height <- 1000; v$width <- "100%"
+v$height <- 1000
+v$width <- "100%"
 v
 tar_visnetwork()
 
