@@ -21,7 +21,7 @@ render(input = here("analysis", "skyline_analysis_mix1.Rmd"), output_file = here
 render(input = here("analysis", "skyline_analysis_mix1.Rmd"), output_file = here("analysis", "skyline_analysis_mix1.html"))
 ```
 
-Some provisional results from analysis of skyline data from DIVINE and ASSIST projects.
+This document describes the statistical analysis of the skyline data from the AgZero mix (biochar and rockdust) experiment.
 
 <!--- { startup -->
 ```{r startup, eval=TRUE, echo=FALSE, include=FALSE}
@@ -29,61 +29,294 @@ here::i_am("analysis/skyline_analysis_mix1.Rmd")
 library(here)
 library(targets)
 library(ggplot2)
+library(nlme)
+library(mrds)
 knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE,
   results = "hold", fig.show = "hold")
 Sys.setenv(TAR_PROJECT = "mix1")
+plot_everything <- FALSE
 ```
 
-# AgZero Mix Experiment
+## Distribution of the data
+First we plot the distribution of the N2O fluxes to check for skewness.
 
-```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Bar plot of treatment and chamber means with 95pc confidence intervals. Black symbols show the 95pc   confidence intervals in treatment means, accounting for the within-chamber autocorrelation."}
-tar_read(p_bar_n2o, store = here("_targets_mix1"))
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Histogram of N2O fluxes by treatment."}
+dt_flux <- tar_read(dt_flux, store = here("_targets_mix1"))
+dt <- dt_flux
+flux_name <- "f_n2o"
+mult <- 1000
+dt[, f := get(flux_name) * mult]
+dt[, trmt_id := as.factor(trmt_id)]
+dt[, trmt_id := relevel(trmt_id, ref = "control")]
+# table(dt[f < 0, trmt_id])
+# 2.7 % are negative
+# dim(dt[f < 0])[1] / dim(dt)[1] * 100
+# fill negative fluxes with the minimum positive value
+f_min <- dt[f > 0, min(f)]
+# dt[f < 0, f := f_min]
+dt <- dt[f > 0] # no, just subset
+
+
+p <- ggplot(dt, aes(x = f)) +
+  geom_histogram()
+p <- p + facet_wrap(~ trmt_id)
+p
 ```
 
-```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "CO2 flux over time by treatment."}
+The N2O flux data are very right-skewed. Usually a log-transformation converts this to something like a normal distribution.
+
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Histogram of log(N2O flux) by treatment."}
+p <- ggplot(dt, aes(x = log(f))) +
+  geom_histogram()
+p <- p + facet_wrap(~ trmt_id)
+p
+```
+
+Indeed, this is a lot more normal.
+We need to include this consideration if we want to make summary statistics with uncertainty bounds.
+We generally assume a normal distribution when we calculate confidence intervals and p values,
+and here we can only justifiably do this with the log-transformed fluxes.
+
+Out of interest, we can compare the pattern in the median and arithmetic mean across the treatments.
+Differences come about when the data are skewed and asymmetrical.
+(Fig below).
+
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Comparison of median and arithmetic mean flux across the treatments."}
+gmean <- function(x) {
+  exp(mean(log(x)))
+}
+dt_mean <- dt[, .(arithmetic_mean = mean(f), median = gmean(f)), by = trmt_id]
+dt_mean <- melt(dt_mean, id.vars = "trmt_id", value = "mean_flux")
+p <- ggplot(dt_mean, aes(x = trmt_id, y = mean_flux, fill = variable))
+p <- p + geom_col(position = position_dodge(0.8), width = 0.7)
+p <- p + facet_wrap(~ variable, scales = "free_y")
+p
+```
+This suggests that the trends are not clear cut, as the pattern depends on which metric we use.
+The relevant metric is the arithmetic mean (because the cumulative flux is the
+arithmetic mean $\times$ time), but we cannot make direct inferences about that
+because of the distribution of the data.
+
+
+## Original analysis
+We could ignore the skewness problem, and simply take the arimthmetic mean of the
+flux in each chamber and analyse these in a standard linear model (~= ANOVA).
+
+```{r, eval = FALSE, results = "hold", echo = TRUE}
+dt_mean <- dt[, .(f = mean(f)), by = .(trmt_id, chamber_id)]
+m_lm <- lm(f ~ trmt_id, data = dt_mean)
+```
+
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Histogram of log(N2O flux) by treatment."}
+dt_mean <- dt[, .(f = mean(f)), by = .(trmt_id, chamber_id)]
+
+# Bar plots + jittered points + error bars
+m_lm <- lm(f ~ trmt_id, data = dt_mean)
+edf_lm <- ggpredict(m_lm, terms = c("trmt_id"))
+df_lm <- as.data.table(edf_lm)
+names(df_lm)[1] <- "trmt_id"
+names(df_lm)[2] <- "f"
+
+p <- ggplot(dt_mean, aes(trmt_id, f, colour = trmt_id))
+p <- p + geom_hline(yintercept = 0)
+p <- p +
+  geom_col(
+    data = df_lm,
+    position = position_dodge(0.8),
+    width = 0.7,
+    fill = "white"
+  )
+p <- p + geom_jitter(position = position_jitter(0.2))
+p <- p +
+  geom_pointrange(
+    data = df_lm,
+    aes(ymin = conf.low, ymax = conf.high),
+    colour = "black"
+  )
+p
+```
+
+This suggests "statistical significance" for the B2 treatment.
+
+```{r, results = "hold", echo = TRUE}
+summary(m_lm)
+```
+However, we have effectively just hidden the skewness problem: the intervals and
+p values assume the chamber means are known quantities (with no uncertainty).
+In fact, the chamber means are rather uncertain estimates when the data are very
+skewed, but this has not been propagated into the statistical analysis.
+
+## Analysis on the log-transformed data
+To meet the standard assumptions, we need to do the analysis on the log-transformed data.
+The complication this brings is that this estimates the median (or geometric mean)
+rather than the arithmetic mean (which is what we want).
+We can back-transform to get fluxes on the original scale, but an additional
+calculation is needed to estimate the arithmetic mean.
+
+To do this we fit a linear mixed model to the logged data, of the form below:
+
+```{r, eval = FALSE, results = "hold", echo = TRUE}
+m_lmer <- lmer(log(f) ~ trmt_id + (1 | chamber_id), data = dt)
+```
+
+Obtaining estimates of the treatment effects and intervals in his way, we then
+apply the back-transformation and calculate the arithmetic means and intervals
+with the standard equation for the lognormal distribution:
+
+$$
+\mu = exp(\mu_{\mathrm{log}} + \sigma_{\mathrm{log}}^2 / 2)
+$$
+
+where $\mu$ is the arithmetic mean on the original scale, $\mu_{\mathrm{log}}$
+is the mean of the log-transformed data and
+$\sigma_{\mathrm{log}}$ is the standard deviation of the log-transformed data.
+
+```{r, eval = TRUE, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Effect of treatments on N2O flux (arithmetic means), showing 95% confidence intervals estimated from a linear mixed-effect model fitted to the log-transformed data. Results are back-transformed to the original scale and the arithmetic mean calculated according to the standard equation."}
+dt_trmt <- dt[,
+  .(amean = mean(f), geomean = gmean(f), f = exp(mean(log(f)) + sd(log(f))^2 / 2),
+   bias_correction = sd(log(f))^2 / 2, n = .N),
+  by = trmt_id
+]
+dt_trmt <- arrange(dt_trmt, factor(trmt_id, levels = levels(dt_trmt$trmt_id)))
+
+dt_cham <- dt[,
+  .(f = exp(mean(log(f)) + sd(log(f))^2 / 2), f_sd = sd(f, na.rm = TRUE), n = .N),
+  by = .(trmt_id, chamber_id)
+]
+dt_cham[, chamber_id := as.factor(chamber_id)]
+
+# Bar plots + jittered points + error bars
+m_lmer <- lmer(log(f) ~ trmt_id + (1 | chamber_id), data = dt)
+edf_lmer <- ggpredict(m_lmer, terms = c("trmt_id"))
+df_lmer <- as.data.table(edf_lmer)
+names(df_lmer)[1] <- "trmt_id"
+names(df_lmer)[2] <- "f"
+df_lmer[, bias_correction := dt_trmt$bias_correction]
+df_lmer[, conf.int  := (conf.high - conf.low) / 2]
+df_lmer[, f := exp(log(f) + bias_correction)]
+df_lmer[, conf.low  := f - exp(log(conf.int) + bias_correction)]
+df_lmer[, conf.high := f + exp(log(conf.int) + bias_correction)]
+
+# plot(edf_lmer) + ylim(0, NA)
+p <- ggplot(dt_cham, aes(trmt_id, f, colour = trmt_id))
+p <- p + geom_hline(yintercept = 0)
+p <- p +
+  geom_col(
+    data = df_lmer,
+    position = position_dodge(0.8),
+    width = 0.7,
+    fill = "white"
+  )
+p <- p + geom_jitter(position = position_jitter(0.2))
+p <- p +
+  geom_errorbar(
+    data = df_lmer,
+    aes(ymin = conf.low, ymax = conf.high),
+    width = 0.1,
+    colour = "black"
+  )
+p
+```
+
+Using the more correct p values, the probablility that the treatment differences
+are due to chance is relatively high (p > 0.4).
+Although the patterns seen in the original analysis are the same, "statistical
+significance" for the treatment differeces is not clear.
+
+```{r, eval = TRUE, results = "hold", fig.show = "hold", echo = FALSE}
+m_lme <- lme(log(f) ~ trmt_id, random = ~1 | chamber_id, data = dt)
+summary(m_lme)
+```
+As model diagnostic checks, we should check that there is no trend in the residuals,
+and that they are approximately normally distributed. Both of these seem resonable
+in the plots below.
+
+```{r, eval = TRUE, results = "hold", fig.show = "hold", echo = FALSE}
+plot(m_lmer)
+hist(resid(m_lmer))
+```
+
+```{r, eval = plot_everything, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "CO2 flux over time by treatment."}
+summary(m_lmer)
+dt[, f := get(flux_name) * mult]
+m_lmer <- lmer(log(f) ~ trmt_id + (1 | chamber_id), data = dt)
+predict_response(m_lmer)
+
+# install.packages("emmeans")
+library(emmeans)
+emm.src <- emmeans(m_lmer, "trmt_id")
+str(emm.src)
+summary(emm.src, infer = TRUE, null = log(35))
+
+summary(emm.src, infer = TRUE, type = "response")
+plot(emm.src, type = "response")
+plot(emm.src, type = "scale")
+
+library(rstanarm)
+m_stan <- stan_glmer(log(f) ~ trmt_id + (1 | chamber_id), data = dt)
+plot(m_stan, "trace", par = 1:4)
+pp_check(m_stan)
+
+nd <- data.frame(trmt_id = levels(dt$trmt_id))
+dt_post <- as.data.table(posterior_predict(m_stan, newdata = nd, re.form = NA))
+names(dt_post) <- levels(dt$trmt_id)
+dt_post <- melt(dt_post, variable = "trmt_id", value = "flux")
+p <- ggplot(dt_post, aes(x = trmt_id, y = flux)) + geom_boxplot()
+p
+
+quantile(y_rep, c(0.025, 0.5, 0.975))
+sapply(y_rep[1:4], quantile, c(0.025, 0.975))
+
+library(nlme)
+m_lme <- lme(log(f) ~ trmt_id, random = ~1| chamber_id, data = dt)
+summary(m_lme)
+anova(m_lme)
+```
+
+```{r, eval = plot_everything, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "CO2 flux over time by treatment."}
 tar_read(p_flux_co2, store = here("_targets_mix1"))
 ```
 
-```{r, echo = FALSE, fig.cap = "CH4 flux over time by treatment."}
+```{r, eval = plot_everything, echo = FALSE, fig.cap = "CH4 flux over time by treatment."}
 tar_read(p_flux_ch4, store = here("_targets_mix1"))
 ```
 
-```{r, echo = FALSE, fig.cap = "N2O flux over time by treatment."}
+```{r, eval = plot_everything, echo = FALSE, fig.cap = "N2O flux over time by treatment."}
 tar_read(p_flux_n2o, store = here("_targets_mix1"))
 ```
 
-```{r, eval = FALSE, echo = FALSE, fig.cap = "N2O flux versus temperature by treatment."}
+```{r, eval = plot_everything, echo = FALSE, fig.cap = "N2O flux versus temperature by treatment."}
 tar_read(p_flux_n2o_T, store = here("_targets_mix1"))
 ```
 
-```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "N2O flux over time by treatment, showing N application dates as vertical black lines."}
+```{r, eval = plot_everything, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "N2O flux over time by treatment, showing N application dates as vertical black lines."}
 tar_read(p_flux_n2o_with_Nappl, store = here("_targets_mix1"))
 ```
 
-```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Temperature data over time."}
+```{r, eval = plot_everything, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Temperature data over time."}
 tar_read(p_T, store = here("_targets_mix1"))
 ```
 
-```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "PPFD data over time."}
+```{r, eval = plot_everything, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "PPFD data over time."}
 tar_read(p_Q, store = here("_targets_mix1"))
 ```
 
-```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "VWC data over time."}
+```{r, eval = plot_everything, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "VWC data over time."}
 tar_read(p_VWC, store = here("_targets_mix1"))
 ```
 
-```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Respiration response to temperature."}
+```{r, eval = plot_everything, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Respiration response to temperature."}
 tar_read(p_reco_T_response, store = here("_targets_mix1"))
 ```
 
-```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "GPP response to PPFD."}
+```{r, eval = plot_everything, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "GPP response to PPFD."}
 tar_read(p_gpp_Q_response, store = here("_targets_mix1"))
 ```
 
-```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "GPP over time."}
+```{r, eval = plot_everything, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "GPP over time."}
 tar_read(p_gpp_date, store = here("_targets_mix1"))
 ```
 
-```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Cummulative GPP, R and net flux over time."}
+```{r, eval = plot_everything, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Cummulative GPP, R and net flux over time."}
 tar_read(p_cum, store = here("_targets_mix1"))
 ```

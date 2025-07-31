@@ -43,7 +43,12 @@ list(
   tar_target(l_meta, qread(fname_meta)),
 
   tar_target(fname_dt_flux, "_targets/objects/dt_flux", format = "file"),
-  tar_target(dt_flux_in, qread(fname_dt_flux)[expt_id == "mix1"]),
+  tar_target(
+    dt_flux_in,
+    qread(fname_dt_flux)[
+      expt_id == "mix1" & trmt_id != "misc" & trmt_id != "In"
+    ]
+  ),
   # choose sign convention for CO2 fluxes
   tar_target(
     dt_flux,
