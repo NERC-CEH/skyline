@@ -1,0 +1,251 @@
+---
+title: "Skyine Analysis - AgZero Mix Experiment"
+author: "Peter Levy"
+output:
+  html_document:
+    number_sections: yes
+    toc: no
+  pdf_document:
+    number_sections: yes
+    toc: no
+---
+
+```{r render, echo = FALSE, eval = FALSE}
+here::i_am("analysis/skyline_analysis_mix2.Rmd")
+library(here)
+library(rmarkdown)
+render(input = here("analysis", "skyline_analysis_mix2.Rmd"), output_file = here("analysis", "skyline_analysis_mix2.html"))
+```
+
+This document describes the statistical analysis of the skyline data from the AgZero mix (biochar and rockdust) experiment.
+
+<!--- { startup -->
+```{r startup, eval=TRUE, echo=FALSE, include=FALSE}
+here::i_am("analysis/skyline_analysis_mix2.Rmd")
+library(here)
+library(targets)
+library(ggplot2)
+library(ggforce)
+library(nlme)
+library(emmeans)
+library(openair)
+
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE,
+  results = "hold", fig.show = "hold")
+Sys.setenv(TAR_PROJECT = "mix1")
+```
+
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Histogram of N2O fluxes by treatment."}
+dt_flux <- tar_read(dt_flux, store = here("_targets_mix1"))
+dt <- dt_flux
+flux_name <- "f_n2o"
+dt[, f := get(flux_name)]
+dt[, f := set_units(f, umol_n2o / m^2 / s)]
+dt[, f := set_units(f, nmol_n2o / m^2 / s)]
+
+dt[, block_id := as.factor(1 + floor(as.numeric(chamber_id) / 5 - 0.2))]
+dt[, trmt_id := as.factor(trmt_id)]
+dt[, trmt_id := relevel(trmt_id, ref = "control")]
+dt <- dt[f > set_units(0, nmol_n2o / m^2 / s)]
+```
+
+## Ensuring balance over time in the data set
+First we define a function to expand the data set to a complete 4-hourly time series,
+so that every chamber has a record for every 4-hour interval.
+
+```{r, results = "hold", fig.show = "hold", echo = TRUE}
+gmean <- function(x) {
+  exp(mean(log(x), na.rm = TRUE))
+}
+
+expand_to_complete_ts <- function(
+  dt,
+  cols = c(
+    "datect",
+    "trmt_id",
+    "chamber_id",
+    "f"
+  )
+) {
+  dt_trmt_id <- dt[, .(trmt_id = unique(trmt_id)), by = chamber_id]
+
+  # get complete time series of hourly data for PPFD_IN and dTA
+  # start on first full day, end on last full day
+  start_ts <- round_date(min(dt$datect), "day") + days(1)
+  end_ts <- round_date(max(dt$datect), "day") - days(1)
+  # generate a sequence of POSIXct values with a 1 hour interval
+  v_date_byhour <- seq(from = start_ts, to = end_ts, by = "1 hour")
+
+  # number of chambers
+  n_chamber <- length(unique(dt$chamber_id))
+  # final length should be equal this:
+  length(v_date_byhour) * n_chamber
+  # create chamber_id column
+  v_chamber_id <- rep(unique(dt$chamber_id), each = length(v_date_byhour))
+  v_trmt_id <- dt_trmt_id$trmt_id[match(v_chamber_id, dt_trmt_id$chamber_id)]
+
+  # repeat the sequence for each chamber
+  v_date_byhour <- rep(v_date_byhour, n_chamber)
+  dt_time <- data.table(date_byhour = v_date_byhour, chamber_id = v_chamber_id, trmt_id = v_trmt_id)
+
+  # merge hourly time sequence with desired columns of raw data
+  # round time to nearest hour so we can merge with complete time series
+  dt[, datect := lubridate::round_date(datect, "hour")]
+  # cols <- c("date_byhour", "chamber_id", "PPFD_IN", "dTA", "VWC", "f_co2", "lue", "R_10", "k_T")
+  dt <- dt[, ..cols][
+    dt_time,
+    on = .(datect = date_byhour, chamber_id = chamber_id, trmt_id = trmt_id)
+  ]
+  setnames(dt, "datect", "date")
+  dt <- setDT(timeAverage(drop_units(dt), avg.time = "4 hour", type = c("chamber_id", "trmt_id")))
+  dt[, block_id := as.factor(1 + floor(as.numeric(chamber_id) / 5 - 0.2))]
+  dt[, f_trmt_mean := mean(f, na.rm = TRUE), by = .(date, trmt_id)]
+  dt[is.na(f), f := f_trmt_mean]
+  return(dt)
+}
+```
+
+We check the balance in the raw data.
+
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Time series of N2O flux in control treatment."}
+table(dt$chamber_id, is.na(dt$f))
+p <- ggplot(dt[trmt_id == "control"], aes(x = datect, y = log(f), colour = chamber_id))
+p <- p + geom_point() + ggtitle("control")
+p <- p + facet_wrap(~ chamber_id)
+p
+```
+
+Chamber 35 in the control (above) is missing the initial fertilisation event so the mean will appear very low.
+The biochar 1 (below) and other treatments appear to be ok - no gaps that would strongly sway the average.
+
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Time series of N2O flux in biochar 1 treatment."}
+p <- ggplot(dt[trmt_id == "B1"], aes(x = datect, y = log(f), colour = chamber_id))
+p <- p + geom_point() + ggtitle("B1")
+p <- p + facet_wrap(~ chamber_id)
+p
+```
+
+We can enforce balance in the data by filling in any gaps in the 4-hour data with
+the treatment mean (i.e. the mean of the other chambers in the treatment for the
+corresponding 4-hour interval).
+
+```{r, results = "hold", fig.show = "hold", echo = TRUE}
+dt <- expand_to_complete_ts(dt)
+```
+
+We then check the balance again in the gap-filled data.
+
+```{r, results = "hold", fig.show = "hold", echo = FALSE}
+table(dt$chamber_id, is.na(dt$f))
+dt <- dt[is.na(dt$f) == FALSE]
+```
+Balance is restored.
+
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Time series of N2O flux in gap-filled control treatment."}
+p <- ggplot(dt[trmt_id == "control"], aes(x = date, y = log(f), colour = chamber_id))
+p <- p + geom_point() + ggtitle("control")
+p <- p + facet_wrap(~ chamber_id)
+p
+```
+
+```{r, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Time series of N2O flux in gap-filled biochar 1 treatment."}
+p <- ggplot(dt[trmt_id == "B1"], aes(x = date, y = log(f), colour = chamber_id))
+p <- p + geom_point() + ggtitle("B1")
+p <- p + facet_wrap(~ chamber_id)
+p
+```
+
+## Analysis on the log-transformed data
+We then repeat the analysis on the log-transformed data, but add a blocking term.
+Remembering that this estimates the median (or geometric mean)
+rather than the arithmetic mean (which is what we want), we
+back-transform to get fluxes on the original scale, but an additional
+calculation is needed to estimate the arithmetic mean.
+
+To do this we fit a linear mixed model to the logged data, of the form below:
+
+```{r, eval = FALSE, results = "hold", echo = TRUE}
+m_lmer <- lmer(log(f) ~ trmt_id + (1 | block_id) + (1 | chamber_id), data = dt)
+```
+
+Obtaining estimates of the treatment effects and intervals in his way, we then
+apply the back-transformation and calculate the arithmetic means and intervals
+with the standard equation for the lognormal distribution:
+
+$$
+\mu = exp(\mu_{\mathrm{log}} + \sigma_{\mathrm{log}}^2 / 2)
+$$
+
+where $\mu$ is the arithmetic mean on the original scale, $\mu_{\mathrm{log}}$
+is the mean of the log-transformed data and
+$\sigma_{\mathrm{log}}$ is the standard deviation of the log-transformed data.
+
+```{r, eval = TRUE, results = "hold", fig.show = "hold", echo = FALSE, fig.cap = "Effect of treatments on N2O flux (arithmetic means), showing 95% confidence intervals estimated from a linear mixed-effect model fitted to the log-transformed data. Results are back-transformed to the original scale and the arithmetic mean calculated according to the standard equation."}
+dt_trmt <- dt[,
+  .(amean = mean(f, na.rm = TRUE), geomean = gmean(f), f = exp(mean(log(f), na.rm = TRUE) + sd(log(f), na.rm = TRUE)^2 / 2),
+   bias_correction = sd(log(f), na.rm = TRUE)^2 / 2, n = .N),
+  by = trmt_id
+]
+dt_trmt <- arrange(dt_trmt, factor(trmt_id, levels = levels(dt_trmt$trmt_id)))
+
+dt_cham <- dt[,
+  .(f = exp(mean(log(f), na.rm = TRUE) + sd(log(f), na.rm = TRUE)^2 / 2), f_sd = sd(f, na.rm = TRUE), n = .N),
+  by = .(trmt_id, chamber_id)
+]
+dt_cham[, chamber_id := as.factor(chamber_id)]
+
+# Bar plots + jittered points + error bars
+m_lmer <- lmer(log(f) ~ trmt_id + (1 | block_id) + (1 | chamber_id), data = dt)
+summary(m_lmer)
+emmeans(m_lmer, pairwise ~ trmt_id)
+
+edf_lmer <- ggpredict(m_lmer, terms = c("trmt_id"))
+df_lmer <- as.data.table(edf_lmer)
+names(df_lmer)[1] <- "trmt_id"
+names(df_lmer)[2] <- "f"
+df_lmer[, bias_correction := dt_trmt$bias_correction]
+df_lmer[, conf.int  := (conf.high - conf.low) / 2]
+df_lmer[, f := exp(log(f) + bias_correction)]
+df_lmer[, conf.low  := f - exp(log(conf.int) + bias_correction)]
+df_lmer[, conf.high := f + exp(log(conf.int) + bias_correction)]
+
+# plot(edf_lmer) + ylim(0, NA)
+p <- ggplot(dt_cham, aes(trmt_id, f, colour = trmt_id))
+p <- p + geom_hline(yintercept = 0)
+p <- p +
+  geom_col(
+    data = df_lmer,
+    position = position_dodge(0.8),
+    width = 0.7,
+    fill = "white"
+  )
+p <- p + geom_jitter(position = position_jitter(0.2))
+p <- p +
+  geom_errorbar(
+    data = df_lmer,
+    aes(ymin = conf.low, ymax = conf.high),
+    width = 0.1,
+    colour = "black"
+  )
+p
+```
+
+Using the more correct p values, the probablility that the treatment differences
+are due to chance is relatively high (p > 0.24).
+Although the patterns seen in the original analysis are the same, "statistical
+significance" for the treatment differeces is not clear.
+
+```{r, eval = TRUE, results = "hold", fig.show = "hold", echo = FALSE}
+m_lme <- lme(log(f) ~ trmt_id, random = ~ 1 | chamber_id, data = drop_units(dt))
+summary(m_lme)
+m_lme <- lme(log(f) ~ trmt_id, random = ~1 | block_id/chamber_id, data = drop_units(dt))
+summary(m_lme)
+```
+As model diagnostic checks, we should check that there is no trend in the residuals,
+and that they are approximately normally distributed. Both of these seem resonable
+in the plots below.
+
+```{r, eval = TRUE, results = "hold", fig.show = "hold", echo = FALSE}
+plot(m_lmer)
+hist(resid(m_lmer))
+```

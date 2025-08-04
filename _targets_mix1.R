@@ -246,5 +246,5 @@ list(
   ),
 
   # report file:
-  tar_render(report_html, here("analysis", "skyline_analysis_mix1.Rmd"))
+  tar_render(report_html, here("analysis", "skyline_analysis_mix2.Rmd"))
 )
