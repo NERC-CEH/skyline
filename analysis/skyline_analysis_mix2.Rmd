@@ -249,3 +249,29 @@ in the plots below.
 plot(m_lmer)
 hist(resid(m_lmer))
 ```
+
+## Calculation of emission factors
+The emission factors are calculated for each treatment as the ratio of the
+cumulative N2O flux to the amount of N applied to the crop.
+The cumulative N2O flux is simply the product of the mean flux and the length of the time period.
+N fertiliser was applied in two events with 50 and 75 kg N / ha in each.
+
+Cumulative emissions in mg N / m^2:
+
+```{r, eval = TRUE, results = "hold", fig.show = "hold", echo = TRUE}
+dt[, f := set_units(f, nmol_n2o / m^2 / s)]
+time_period <- difftime("2024-08-14", "2024-05-03", units = "secs")
+time_period <- set_units(as.numeric(time_period), s)
+dt[, f := f * time_period]
+dt[, f := set_units(f, mg / m^2)] # this is mass of N, not N2O because we define mol_n2o as such
+dt[, mean(f), by = trmt_id]
+```
+
+Emission factors as percentages:
+
+```{r, eval = TRUE, results = "hold", fig.show = "hold", echo = TRUE}
+dt[, N_appl := set_units(50 + 75, kg / ha)]
+dt[, N_appl := set_units(N_appl, mg / m^2)]
+dt[, ef := f / N_appl] # back to N2, not N2O
+dt[, mean(ef) * 100, by = trmt_id]
+```
