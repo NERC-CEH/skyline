@@ -63,7 +63,7 @@ diagnostic_plots <- TRUE
 
 n_min <- 100
 method <- "time fit" # "time fit" or "specified deadband only"
-# dryrun <- FALSE  # FALSE = remove deadbands and calculate fluxes, TRUE = plots showing deadbands for visual checking before calculating fluxes
+dryrun <- FALSE  # FALSE = remove deadbands and calculate fluxes, TRUE = plots showing deadbands for visual checking before calculating fluxes
 
 #### list of targets: ####
 

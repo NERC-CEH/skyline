@@ -575,7 +575,11 @@ get_data <- function(
     dt <- dt[mmnt_id != first(dt$mmnt_id), ][mmnt_id != last(dt$mmnt_id), ]
 
     # enumerate the records within a mmnt sequence
-    dt[, t := seq_len(.N), by = mmnt_id] # add column t with numbers 1:length(dt split by mmnt_id)
+    # dt[, t := seq_len(.N), by = mmnt_id] # add column t with numbers 1:length(dt split by mmnt_id)
+    dt[, i := seq_len(.N), by = mmnt_id]
+    dt[, t_0 := .SD[1, datect], by = mmnt_id]
+    dt[, t := difftime(datect, t_0, units = "secs"), by = mmnt_id]
+
     # remove records beyond the maximum mmnt length - this assumes measurements taken every second!!
     dt <- dt[t < dt_band$t_max] # i.e. 5 minutes => t_max = 300
 
@@ -790,13 +794,18 @@ identify_deadband <- function(
   # exclude the pre-defined deadband
   dt[t < initial_deadband_width | t > start_final_deadband, exclude := TRUE]
 
+  # create dummy w and t_resid column replaced if using "time fit" method but required for plots
+  # and flux calculation later on if using "specified deadband only"
+  dt[, w := 1]
+  dt[, t_resid := 0.1]
+
   if (method == "time fit") {
     dt <- dt[!is.na(chi_co2)]
     dt[, w := dbeta(t / n, shape1 = 1.5, shape2 = 1.5)]
     # predict chi_co2, weighted towards the middle
     # and use this to filter out the nonlinear part
     if (length(unique(dt$mmnt_id)) > 1) {
-      form <- formula(chi_co2 ~ t)
+      form <- formula(chi_co2 ~ t + I(t^2))
       # very slow on JASMIN?:
       dt[, t_resid := abs(resid(lm(form, w = w, data = .SD))), by = mmnt_id]
     }
@@ -1407,10 +1416,12 @@ filter_fluxes2 <- function(
   # second option for filtering fluxes for EA without altering code by PL
   # remove days during experiment when no flux measurements
   dt <- dt[!is.na(site_id)]
+  dt <- dt[, .SD[1], by = mmnt_id]
 
   # # crude filtering of extreme outliers; units of umol/m2/s
   # # add thresholds as arguments
   dt <- dt[rmse_f_co2 < rmse_threshold]
+  dt <- dt[chi_co2 > 300 & chi_co2 < 600]
   # dt <- dt[f_co2 > -50 & f_co2 < 50]
   # dt <- dt[f_n2o > -0.1 & f_n2o < 0.1]
   # dt <- dt[rmse_f_n2o < 0.021]
@@ -1709,7 +1720,7 @@ get_flux <- function(dt) {
   dt <- calc_flux_ln(dt, gas_name = "ch4")
   dt <- calc_flux_ln(dt, gas_name = "n2o")
   # we only need the first row - flux is duplicated
-  dt <- dt[, .SD[1], by = mmnt_id]
+  # dt <- dt[, .SD[1], by = mmnt_id] # do this in filter_fluxes2 instead
   return(dt)
 }
 
