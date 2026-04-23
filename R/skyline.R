@@ -349,10 +349,10 @@ get_soilmet_data <- function(v_fnames, o2_data = TRUE) {
   if ("SoilEC" %!in% names(dt)) {
     dt[, SoilEC := NA]
   }
-  # we want VWC as a fraction not a percentage
-  if (mean(dt$VWC, na.rm = TRUE) > 1) {
-    dt[, VWC := VWC / 100]
-  }
+  # # we want VWC as a fraction not a percentage
+  # if (mean(dt$VWC, na.rm = TRUE) > 1) {
+  #   dt[, VWC := VWC / 100]
+  # }
 
   # If any column contains only NAs, it gets logical type and crashes melt
   # by trying to combine logical and numeric types in one column.
@@ -579,6 +579,7 @@ get_data <- function(
     dt[, i := seq_len(.N), by = mmnt_id]
     dt[, t_0 := .SD[1, datect], by = mmnt_id]
     dt[, t := difftime(datect, t_0, units = "secs"), by = mmnt_id]
+    dt$t <- as.numeric(dt$t)
 
     # remove records beyond the maximum mmnt length - this assumes measurements taken every second!!
     dt <- dt[t < dt_band$t_max] # i.e. 5 minutes => t_max = 300
