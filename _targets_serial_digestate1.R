@@ -1,7 +1,6 @@
 library(targets)
 library(tarchetypes)
 library(here)
-library(qs)
 library(rmarkdown)
 library(data.table)
 # Uncomment the following code and use tar_make_future(workers = 5L) to make
@@ -20,7 +19,6 @@ v_pkgs = c(
   "data.table",
   "readxl",
   "units",
-  "qs",
   "ggplot2",
   "lubridate",
   "dplyr",
@@ -34,8 +32,7 @@ v_pkgs = c(
   "fastmap"
 )
 tar_option_set(
-  packages = v_pkgs,
-  format = "qs"
+  packages = v_pkgs
 )
 
 tar_source()
@@ -59,7 +56,7 @@ v_dates <- NULL
 seq_id_to_plot <- 1 # default to 1 as night/dark flux so should be clear if something is wrong with deadbands
 save_plots <- TRUE # save plots for all gases containing every flux per chamber each day
 write_all <- FALSE # combine files for days processed
-diagnostic_plots <- TRUE
+diagnostic_plots <- FALSE
 
 n_min <- 100
 method <- "time fit" # "time fit" or "specified deadband only"

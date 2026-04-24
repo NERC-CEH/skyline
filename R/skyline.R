@@ -673,7 +673,6 @@ get_data <- function(
     if (!dryrun) {
       fname <- paste0(pname_csv, "/dt_chi_", lubridate::date(this_date), ".csv")
       fwrite(dt, file = fname)
-      if (save_plots) {
         # for EA to double check deadbands otherwise defaults to FALSE
         p <- plot_data_unfiltered(
           dt,
@@ -682,7 +681,6 @@ get_data <- function(
           final_deadband_width = dt_band$final_deadband_width,
           seq_id_to_plot = seq_id_to_plot
         )
-      }
       l_dt_chi[[i]] <- dt
     }
 
