@@ -13,6 +13,7 @@ library(targets)
 # tar_config_set(script = "_targets_serial_biochar1.R", store = "_targets_serial_biochar1", project = "serial_biochar1")
 # tar_config_set(script = "_targets_serial_digestate1.R", store = "_targets_serial_digestate1", project = "serial_digestate1")
 # tar_config_set(script = "_targets_serial_split1.R", store = "_targets_serial_split1", project = "serial_split1")
+# tar_config_set(script = "_targets_serial_shading1.R", store = "_targets_serial_shading1", project = "serial_shading1")
 
 source("_targets.R")
 
@@ -43,7 +44,8 @@ Sys.setenv(TAR_PROJECT = "serial_digestate1")
 tar_make()
 Sys.setenv(TAR_PROJECT = "serial_split1")
 tar_make()
-
+Sys.setenv(TAR_PROJECT = "serial_shading1")
+tar_make()
 
 tar_outdated()
 # running in parallel seems to cause some problems for individual experiment projects

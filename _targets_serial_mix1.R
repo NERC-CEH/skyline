@@ -1,7 +1,6 @@
 library(targets)
 library(tarchetypes)
 library(here)
-library(qs)
 library(rmarkdown)
 library(data.table)
 # Uncomment the following code and use tar_make_future(workers = 5L) to make
@@ -20,7 +19,6 @@ v_pkgs = c(
   "data.table",
   "readxl",
   "units",
-  "qs",
   "ggplot2",
   "lubridate",
   "dplyr",
@@ -34,8 +32,7 @@ v_pkgs = c(
   "fastmap"
 )
 tar_option_set(
-  packages = v_pkgs,
-  format = "qs"
+  packages = v_pkgs
 )
 
 tar_source()
@@ -62,7 +59,7 @@ diagnostic_plots <- TRUE
 
 n_min <- 100
 method <- "time fit" # "time fit" or "specified deadband only"
-# dryrun <- FALSE  # FALSE = remove deadbands and calculate fluxes, TRUE = plots showing deadbands for visual checking before calculating fluxes
+dryrun <- FALSE  # FALSE = remove deadbands and calculate fluxes, TRUE = plots showing deadbands for visual checking before calculating fluxes
 
 #### list of targets: ####
 
